@@ -1,0 +1,137 @@
+# TutorKita — panduan untuk Claude
+
+Platform bimbingan belajar gratis: mahasiswa relawan (Tutor) mengajar siswa SD/SMP/SMA (Student/Siswa), diawasi Admin.
+Stack: Laravel 12 (PHP 8.2), Blade, Tailwind CSS 4, Vite, JavaScript murni, SQLite. Bahasa antarmuka & pesan error: Indonesia.
+Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutorkita
+
+**Kode adalah acuan. Jira hanya referensi.** Kartu Jira banyak yang salah status/peran; pakai ROADMAP di bawah.
+
+## Perintah penting
+- `php artisan test` — seluruh tes (SQLite :memory:, user store sementara; aman dijalankan).
+- `npm run build` — wajib setelah mengubah CSS/JS.
+- `php artisan route:list --except-vendor -v` — route + middleware.
+- `php artisan migrate:status` — cek migrasi (read-only).
+- `composer run dev` — server + queue + Vite.
+- DILARANG tanpa izin: `php artisan tutorkita:admin`, `git commit`, `git push`, `migrate:fresh|reset`, `db:wipe`.
+
+## Data lokal (data uji, JANGAN di-commit)
+- `database/database.sqlite` — database uji lokal.
+- `storage/app/private/users.json` — akun uji (LocalUserStore) beserta hash password.
+- `storage/app/private/*` lainnya — unggahan (foto profil, PDF materi, jawaban tugas).
+- `database/*.sqlite*`, `database/backup-*/`, `database/recovery-*.json` — backup/recovery.
+- Semua di atas di-ignore git. Jangan pernah `git add -f` file-file ini. Akun lama di users.json tidak boleh diubah/dihapus.
+- Akun uji (password TIDAK ditulis di repo; tanyakan pemilik proyek):
+  - `admin@tutorkita.test` — Admin (id 3, dibuat via `php artisan tutorkita:admin`)
+  - `tutor@tutorkita.test` — Tutor (id 5, daftar sebagai Siswa → ajukan tutor → disetujui Admin)
+  - `siswa@tutorkita.test` — Siswa (id 4, daftar via `/register`)
+- Akun lama id 1 dan 2 (data teman) — jangan diubah.
+
+## Status langkah persiapan (2026-11-16)
+- P1 selesai: CLAUDE.md dibuat.
+- P2 selesai: `database/recovery-20261110-115933-users.json` dihapus dari repo (riwayat git tidak ditulis ulang),
+  `.gitignore` ditambah pola data lokal, 2 backup SQLite 0 byte dihapus.
+- P3 selesai: backup di `database/backup-20261116-154938/` (database.sqlite + users.json); 3 akun uji dibuat.
+- Alur pengajuan tutor (Siswa mengajukan → Admin menyetujui → login sebagai Tutor) sudah teruji manual di browser
+  pada 2026-11-16; data DB konsisten (pengajuan id 1 approved, `user_role_changes` source `tutor_application_approval`).
+- Langkah berikutnya: ROADMAP 0.1 (tunjukkan rencana dulu, tunggu persetujuan).
+
+## Arsitektur
+- Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
+  `App\Support\LocalUserStore` + `App\Auth\FileUserProvider`. Tabel `users` TIDAK dipakai.
+- Role ada di SQLite `user_roles` (student|tutor|admin); log di `user_role_changes`. `FileUserProvider::makeUser`
+  membaca role tiap request dan membuat baris `student` bila belum ada.
+- ID akun disimpan sebagai string di tabel lain (student_id, user_id, tutor_id) tanpa foreign key.
+- Middleware role: alias `role` → `App\Http\Middleware\EnsureRole` (`->middleware('role:admin')`).
+  Fitur baru WAJIB memakainya; banyak controller lama masih memakai `abort_unless` di dalam controller.
+- Dashboard = satu halaman SPA: `DashboardController` → `dashboard/index.blade.php` + `dashboard/pages/workspace.blade.php`;
+  `resources/js/dashboard.js` mengganti `data-spa-page` dan memanggil endpoint JSON. Sidebar/topbar di `dashboard/partials`.
+- Data dashboard dirakit di `app/Support/*Data.php`. `DashboardMockData` masih menyuplai tutor katalog (MOCK).
+- File unggahan di disk `local` (`storage/app/private`), disajikan lewat route yang dicek pemiliknya.
+- Desain: biru `#0866F5`, navy `#0D2B5E`, latar `#EFF6FE`/putih; logo resmi di `public/assets/tutorkita/` (jangan diubah).
+- "Mata Pelajaranku" siswa (`student_subjects`, `SubjectsController`) sudah selesai — pertahankan.
+
+## Pemisahan konsep jadwal (jangan dicampur)
+- Slot ketersediaan tutor — belum ada tabel; sementara hanya `tutor_profiles.availability` (JSON string). Target: tabel sendiri (ROADMAP 2.2).
+- Sesi/pemesanan — `learning_sessions` (belum punya tutor_id/slot_id; tutor masih dari mock). "Jadwal belajar" di beranda siswa dibaca dari sini.
+
+## ROADMAP (kerjakan satu langkah per instruksi; status per audit 2026-11-16)
+Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
+
+### Tahap 0: Fondasi
+- 0.1 Tampilan per role (sidebar, beranda, menu; satu sumber definisi menu per role) — **Belum** (hanya menu profil yang beda).
+- 0.2 Pengecekan role via middleware `role:` di route sesi/materi/tugas/mapel + tes diizinkan/ditolak — **Belum** (baru 2 route).
+- 0.3 Keamanan login: pesan error seragam + rate limit (mis. 5/menit per kontak+IP) — **Belum**.
+
+### Tahap 1: Admin
+- 1.1 Katalog mapel & jenjang (CRUD, jenjang per mapel, cari; mapel terpakai hanya diarsip) — **Belum** (mapel hanya dari seeder).
+- 1.2 Pengajuan tutor lengkap (unggah kartu mahasiswa privat; daftar + filter + cari; detail & pratinjau aman; setujui/tolak) — **Sebagian** (setujui/tolak ada di `TutorApplicationController::decide`; perluas, jangan tulis ulang).
+- 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Belum** (`updateProfile` memaksa `is_active = true`).
+- 1.4 Kelola pengguna (daftar, cari, filter role, detail; nonaktifkan akun = tak bisa login; perbaiki N+1) — **Sebagian** (dialog daftar read-only, N+1).
+
+### Tahap 2: Tutor
+- 2.1 Profil tutor (mapel dari katalog 1.1, foto bisa dilihat siswa, status jelas) — **Sebagian**.
+- 2.2 Slot ketersediaan (tabel baru, CRUD, validasi bentrok, migrasi/usangkan `availability`; terpisah dari `learning_sessions`) — **Belum**.
+- 2.3 Materi (tutor lihat miliknya termasuk draf; mapel/jenjang dari katalog; data lama tetap terbaca; buang jenjang di luar `grade_levels`) — **Sebagian** (CRUD materi selesai; draf tak terlihat; mapel/jenjang teks).
+
+### Tahap 3: Alur sesi (urutan wajib)
+- 3.1 Katalog tutor asli + slot kosong (ganti `DashboardMockData`; filter dari DB) — **Sebagian** (UI ada, data mock).
+- 3.2 Ajukan/batalkan sesi (`tutor_id`, `slot_id` aditif; anti pesan ganda dalam transaksi; hanya Siswa) — **Sebagian** (store/cancel ke tutor mock).
+- 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Belum**.
+- 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
+
+### Tahap 4: Tugas & materi untuk siswa
+- 4.1 UI tutor untuk tugas (hanya siswa yang pernah sesi dengannya; daftar pengumpulan; unduh; nilai + umpan balik) — **Sebagian** (backend `create`/`grade` saja).
+- 4.2 Siswa mengerjakan tugas & melihat nilai (sesuaikan dengan 4.1) — **Sebagian besar ada**.
+- 4.3 Siswa melihat/mengunduh materi + gate role — **Ada, tanpa gate role**.
+
+### Tahap 5: Siswa
+- 5.1 Profil siswa lengkap + dokumen pendukung privat — **Belum**. Sebelum mulai, TANYAKAN apakah verifikasi wajib sebelum memesan sesi (kalau ya, 5.1–5.2 sebelum Tahap 3).
+- 5.2 Admin memverifikasi siswa — **Belum**.
+- 5.3 Rating & ulasan (hanya sesi selesai dari 3.4, satu per sesi) — **Belum**.
+- 5.4 Tutor lihat ulasan; Admin sembunyikan/tampilkan + alasan; rating katalog dari ulasan tak tersembunyi — **Belum**.
+
+### Tahap 6: Penutup
+- 6.1 Dashboard ringkasan & grafik per role dengan data asli — **Sebagian** (siswa saja).
+- 6.2 Bersih-bersih kode mati, DatabaseSeeder "Test User", README.md, FOR INFO.md — **Belum**.
+
+Kartu Jira yang diabaikan dulu: TT-14, TT-23, TT-24, TT-25.
+
+## Cara kerja setiap langkah ROADMAP
+1. Saat diminta "kerjakan X.Y": baca kode terkait, tunjukkan rencana singkat (file diubah/dibuat, migrasi, route & role, tes, risiko), tunggu persetujuan.
+2. Setelah disetujui: backup `database/database.sqlite` sebelum migrasi, kerjakan, jalankan `php artisan test` (+ `npm run build` bila CSS/JS berubah).
+3. Laporkan: apa yang berubah, hasil tes apa adanya, langkah uji manual di browser dengan akun uji, kartu Jira terkait.
+4. Jangan commit sebelum diminta. Bila diminta: satu langkah ROADMAP = satu commit, pesan berbahasa Indonesia
+   (mis. "Admin: kelola katalog mapel dan jenjang").
+5. Usulkan dulu (dengan alasan) bila ingin mengubah urutan ROADMAP.
+
+## Masalah yang diketahui
+- Pesan login membocorkan akun terdaftar ("belum terdaftar" vs "password salah") — ROADMAP 0.3.
+- Login tanpa rate limit/throttle — ROADMAP 0.3.
+- `updateProfile` selalu mengisi `tutor_profiles.is_active = true` — ROADMAP 1.3.
+- Status sesi `completed` dihitung otomatis dari waktu, bukan ditandai tutor — ROADMAP 3.4.
+- Mapel/jenjang di `learning_materials` dan `learning_sessions` disimpan sebagai teks, bukan FK; materi punya jenjang
+  "Perguruan Tinggi" yang tidak ada di `grade_levels` — ROADMAP 2.3/3.2.
+- Sidebar belum menyesuaikan role; route sesi & materi bisa diakses semua role — ROADMAP 0.1/0.2.
+- `AssignmentController::create` menerima student_id siapa pun — ROADMAP 4.1.
+- Query N+1 di daftar pengguna admin; `FileUserProvider` query role tiap request — ROADMAP 1.4.
+- Kode mati: `SubjectsMockData`, `welcome.blade.php`, `components/subject-card.blade.php`, file `[` di root — ROADMAP 6.2.
+- `FOR INFO.md` dan `README.md` usang — ROADMAP 6.2.
+- Riwayat git masih memuat `database/recovery-20261110-115933-users.json` (email + hash); file sudah dihapus dari
+  repo tanpa menulis ulang riwayat.
+
+## ATURAN WAJIB
+1. Jangan pernah membuang perubahan yang belum di-commit. Dilarang `git checkout -- .`, `git reset --hard`,
+   `git clean`, `git stash drop`, atau menimpa file tanpa membaca isinya dulu.
+2. Jangan jalankan `migrate:fresh`, `migrate:reset`, `db:wipe`, atau apa pun yang menghapus data. Sebelum migrasi
+   baru, backup dulu `database/database.sqlite` dan beri tahu pemilik proyek.
+3. Jangan mengubah atau menghapus akun yang sudah ada di LocalUserStore.
+4. Jangan menjalankan `php artisan tutorkita:admin`, `git commit`, atau `git push` tanpa izin.
+5. Sebelum mengedit file, baca dulu isinya dan file yang terkait.
+6. Setiap selesai mengubah kode, jalankan `php artisan test` (dan `npm run build` kalau CSS/JS berubah), lalu
+   laporkan hasilnya apa adanya. Jangan bilang sesuatu sudah teruji kalau belum dijalankan.
+7. Ikuti gaya kode yang ada: struktur folder, penamaan, komponen Blade, pesan error berbahasa Indonesia,
+   dan desain warna TutorKita.
+8. Setiap fitur baru harus dicek hak aksesnya per role (Admin/Tutor/Siswa), memakai middleware `EnsureRole`,
+   dan punya tes.
+9. Kalau permintaan ambigu atau berisiko, tanya dulu sebelum mengerjakan.
+10. Saat diminta mengerjakan langkah ROADMAP, jelaskan rencana singkat dulu (file, tabel/migrasi, tes) dan tunggu persetujuan.

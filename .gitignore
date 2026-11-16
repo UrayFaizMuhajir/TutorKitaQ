@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Data uji lokal TutorKita (berisi data pribadi) — jangan di-commit
+database/recovery-*.json
+database/*.sqlite*
+database/backup-*/
+storage/app/private/
