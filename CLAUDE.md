@@ -35,7 +35,7 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 - P3 selesai: backup di `database/backup-20261116-154938/` (database.sqlite + users.json); 3 akun uji dibuat.
 - Alur pengajuan tutor (Siswa mengajukan → Admin menyetujui → login sebagai Tutor) sudah teruji manual di browser
   pada 2026-11-16; data DB konsisten (pengajuan id 1 approved, `user_role_changes` source `tutor_application_approval`).
-- Perbaikan bug dashboard (2026-11-18, belum di-commit, menunggu uji browser pemilik proyek):
+- Perbaikan bug dashboard (2026-11-18, diuji pemilik di browser; commit 62594ce dan f6ba5d1, belum di-push):
   - Penyebab: kartu sesi dan `<select>` tutor sama-sama memakai `data-session-tutor`; `dashboard.js` mengambil kartu
     sebagai select → TypeError saat inisialisasi → Lihat Detail, Batalkan, menu profil, logout, notifikasi ikut mati
     bagi SEMUA akun yang punya ≥1 sesi. Select kini `data-session-tutor-select` dan dicari di dalam form.
@@ -44,10 +44,9 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   - Ruang kosong di atas judul halaman: `.spa-page` diberi `align-content: start`.
   - Pengajuan/pembatalan sesi hanya Siswa (`role:student`); tombol & dialog pengajuan disembunyikan untuk Tutor/Admin.
   - Backup sebelum perbaikan: `database/backup-20261118-074917/`.
-  - Rencana commit (setelah pemilik bilang oke): (a) perbaikan bug + ketahanan + ruang kosong + ⌄;
-    (b) pembatasan pengajuan sesi hanya Siswa.
-  - Sesi uji `learning_sessions` id 1 milik gudti (tutor tercatat sebagai siswa) DIBIARKAN untuk uji browser;
-    hapus setelah pemilik mengonfirmasi perbaikan berhasil.
+  - Sesi uji `learning_sessions` id 1 milik gudti sudah dihapus (backup: `database/backup-20261118-081652/`).
+    Notifikasinya (`user_notifications` key `session:1:pending`) juga dihapus (backup: `database/backup-20261118-083231/`).
+  - Alur Siswa teruji di browser: sesi id 2 milik siswa id 4 diajukan lalu dibatalkan (status `cancelled`, sengaja dibiarkan).
 - Langkah berikutnya: ROADMAP 0.1 (tunjukkan rencana dulu, tunggu persetujuan).
 
 ## Arsitektur
