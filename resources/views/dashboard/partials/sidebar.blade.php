@@ -19,10 +19,10 @@
                 <button type="button" aria-label="Mulai belajar" data-toast="Semangat belajar bersama TutorKita!"><x-icon name="arrow-right" class="icon-sm" /></button>
             </div>
         </section>
-        <div class="sidebar-user-profile">
+        <button class="sidebar-user-profile" type="button" aria-label="Menu profil {{ $user['full_name'] }}" aria-expanded="false" aria-controls="profile-menu" data-profile-toggle>
             <span class="sidebar-user-avatar" aria-hidden="true">{{ $user['initials'] }}</span>
             <span><strong>{{ $user['full_name'] }}</strong><small>{{ $user['role_label'] }}</small></span>
             <x-icon name="chevron-down" class="icon-sm" />
-        </div>
+        </button>
     </div>
 </aside>

@@ -881,7 +881,7 @@ button { color: inherit; }
 .sidebar-nav .nav-link { width: 100%; border: 0; text-align: left; cursor: pointer; font: inherit; }
 .sidebar-unread-dot,.unread-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #ef4444; }
 .spa-page[hidden] { display:none!important; }
-.spa-page { min-height: calc(100vh - 112px); animation: spa-enter .2s ease both; }
+.spa-page { min-height: calc(100vh - 112px); align-content: start; animation: spa-enter .2s ease both; }
 @keyframes spa-enter { from { opacity:0; transform:translateY(5px) } to { opacity:1; transform:translateY(0) } }
 .spa-title { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin:4px 0 22px; }
 .spa-title h1 { margin:6px 0 4px; color:#111827; font-size:clamp(27px,3vw,38px); line-height:1.12; letter-spacing:-1.3px; }
@@ -1465,7 +1465,8 @@ body.dashboard-body .catalog-help-card > .icon { width: 54px; height: 38px; colo
 body.dashboard-body .catalog-help-card strong { max-width: 190px; color: #172033; font-size: 21px; font-weight: 720; line-height: 1.25; }
 body.dashboard-body .catalog-help-card button { position: absolute; right: 0; bottom: 1px; display: grid; width: 39px; height: 39px; place-items: center; border: 0; border-radius: 50%; background: #1765d8; color: #fff; cursor: pointer; transition: transform .2s ease, background .2s ease; }
 body.dashboard-body .catalog-help-card button:hover { background: #0b55bd; transform: translateX(3px); }
-body.dashboard-body .sidebar-user-profile { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 18px 10px 0; color: #172033; }
+body.dashboard-body .sidebar-user-profile { display: flex; width: 100%; min-width: 0; align-items: center; gap: 12px; padding: 18px 10px 0; border: 0; background: transparent; color: #172033; font: inherit; text-align: left; cursor: pointer; }
+body.dashboard-body .sidebar-user-profile:focus-visible { outline: 2px solid #0866F5; outline-offset: 4px; border-radius: 12px; }
 body.dashboard-body .sidebar-user-avatar { display: grid; width: 50px; height: 50px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: linear-gradient(145deg, #ddb18c, #b8835d); color: #fff; font-size: 14px; font-weight: 700; }
 body.dashboard-body .sidebar-user-profile > span:nth-child(2) { display: grid; min-width: 0; gap: 4px; }
 body.dashboard-body .sidebar-user-profile strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }

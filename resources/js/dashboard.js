@@ -140,6 +140,65 @@ if (dashboard) {
     const pageToast = document.querySelector('[data-toast-on-load]')?.textContent.trim();
     if (sessionToast || pageToast) showToast(sessionToast || pageToast);
 
+    // Kerangka halaman (sidebar, notifikasi, menu profil/logout, klik global) dipasang paling awal
+    // agar tetap berfungsi walaupun salah satu modul halaman di bawah gagal dimuat.
+    const safeInit = (name, init) => {
+        try {
+            init();
+        } catch (error) {
+            console.error(`[TutorKita] Gagal memuat ${name}:`, error);
+        }
+    };
+
+    sidebarToggle?.addEventListener('click', () => setSidebar(!sidebar.classList.contains('is-open')));
+    scrim?.addEventListener('click', () => setSidebar(false));
+    document.querySelectorAll('.sidebar [href^="#"]').forEach((link) => link.addEventListener('click', () => setSidebar(false)));
+    document.querySelector('.sidebar-close')?.addEventListener('click', () => setSidebar(false));
+
+    document.querySelector('[data-notification-toggle]')?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeMenus(notificationMenu);
+        notificationMenu.hidden = !notificationMenu.hidden;
+        event.currentTarget.setAttribute('aria-expanded', String(!notificationMenu.hidden));
+    });
+
+    document.querySelectorAll('[data-profile-toggle]').forEach((button) => button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (event.currentTarget.closest('.sidebar')) setSidebar(false);
+        closeMenus(profileMenu);
+        profileMenu.hidden = !profileMenu.hidden;
+        document.querySelectorAll('[data-profile-toggle]').forEach((trigger) => trigger.setAttribute('aria-expanded', String(!profileMenu.hidden)));
+    }));
+
+    document.querySelector('[data-mark-read]')?.addEventListener('click', () => {
+        document.querySelectorAll('.notification-item.is-unread').forEach((item) => item.classList.remove('is-unread'));
+        const unreadLabel = document.querySelector('.dropdown-heading > div > span');
+        if (unreadLabel) unreadLabel.textContent = 'Semua sudah dibaca';
+        document.querySelector('.notification-dot')?.remove();
+        showToast('Notifikasi ditandai sudah dibaca.');
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.dropdown-wrap')) closeMenus();
+        const action = event.target.closest('[data-toast]');
+        if (action) showToast(action.dataset.toast);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeMenus();
+            setSidebar(false);
+        }
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+            event.preventDefault();
+            searchInput?.focus();
+        }
+    });
+
+    window.matchMedia('(min-width: 961px)').addEventListener('change', (event) => {
+        if (event.matches) setSidebar(false);
+    });
+
     const profileDialog = document.querySelector('[data-profile-dialog]');
     const tutorApplicationDialog = document.querySelector('[data-tutor-application-dialog]');
     const adminVerificationDialog = document.querySelector('[data-admin-verification-dialog]');
@@ -1058,9 +1117,10 @@ if (dashboard) {
     const sessionCreateDialog = sessionPage?.querySelector('[data-session-create-dialog]');
     const sessionDetailDialog = sessionPage?.querySelector('[data-session-detail-dialog]');
     const sessionCreateForm = sessionPage?.querySelector('[data-session-create-form]');
-    const sessionTutorSelect = sessionPage?.querySelector('[data-session-tutor]');
-    const sessionSubjectSelect = sessionPage?.querySelector('[data-session-subject]');
-    const sessionLevelSelect = sessionPage?.querySelector('[data-session-level]');
+    // Cari pilihan form hanya di dalam form: kartu sesi juga memakai atribut data-session-tutor.
+    const sessionTutorSelect = sessionCreateForm?.querySelector('select[data-session-tutor-select]');
+    const sessionSubjectSelect = sessionCreateForm?.querySelector('select[data-session-subject]');
+    const sessionLevelSelect = sessionCreateForm?.querySelector('select[data-session-level]');
     const sessionFormError = sessionPage?.querySelector('[data-session-form-error]');
     const sessionDetailContent = sessionPage?.querySelector('[data-session-detail-content]');
     const sessionCancelButton = sessionPage?.querySelector('[data-session-cancel]');
@@ -1105,10 +1165,10 @@ if (dashboard) {
     sessionPage?.querySelectorAll('[data-session-filter-shortcut]').forEach((button) => button.addEventListener('click', () => {
         sessionPage.querySelector(`[data-session-filter="${button.dataset.sessionFilterShortcut}"]`)?.click();
     }));
-    renderSessions();
+    safeInit('daftar sesi', renderSessions);
 
     const syncSessionSubjects = () => {
-        if (!sessionTutorSelect || !sessionSubjectSelect) return;
+        if (!(sessionTutorSelect instanceof HTMLSelectElement) || !(sessionSubjectSelect instanceof HTMLSelectElement)) return;
         const option = sessionTutorSelect.selectedOptions[0];
         const subjects = (option?.dataset.subjects || '').split('|').filter(Boolean);
         const levels = (option?.dataset.levels || '').split('|').filter(Boolean);
@@ -1128,7 +1188,7 @@ if (dashboard) {
         }
     };
     sessionTutorSelect?.addEventListener('change', syncSessionSubjects);
-    syncSessionSubjects();
+    safeInit('form pengajuan sesi', syncSessionSubjects);
 
     sessionPage?.querySelectorAll('[data-session-dialog-open]').forEach((button) => button.addEventListener('click', () => {
         sessionFormError.hidden = true;
@@ -1207,7 +1267,7 @@ if (dashboard) {
         if (!sessionCancelButton.dataset.url) return;
         sessionCancelButton.disabled = true;
         try {
-            const token = sessionCreateForm.querySelector('[name="_token"]').value;
+            const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
             const response = await fetch(sessionCancelButton.dataset.url, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token },
@@ -1218,8 +1278,7 @@ if (dashboard) {
             showToast(result.message);
             window.location.reload();
         } catch (error) {
-            sessionFormError.textContent = error.message;
-            sessionFormError.hidden = false;
+            showToast(error.message);
         } finally {
             sessionCancelButton.disabled = false;
         }
@@ -1307,7 +1366,7 @@ if (dashboard) {
             renderHistory();
         }
     });
-    renderHistory();
+    safeInit('riwayat sesi', renderHistory);
 
     const historyStatusLabels = { pending: 'Menunggu Konfirmasi', confirmed: 'Terkonfirmasi', in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan' };
     const openHistoryDetails = async (card) => {
@@ -1402,33 +1461,6 @@ if (dashboard) {
         if (subjectEmpty) subjectEmpty.hidden = visibleSubjects > 0;
     };
 
-    sidebarToggle?.addEventListener('click', () => setSidebar(!sidebar.classList.contains('is-open')));
-    scrim?.addEventListener('click', () => setSidebar(false));
-    document.querySelectorAll('.sidebar [href^="#"]').forEach((link) => link.addEventListener('click', () => setSidebar(false)));
-    document.querySelector('.sidebar-close')?.addEventListener('click', () => setSidebar(false));
-
-    document.querySelector('[data-notification-toggle]')?.addEventListener('click', (event) => {
-        event.stopPropagation();
-        closeMenus(notificationMenu);
-        notificationMenu.hidden = !notificationMenu.hidden;
-        event.currentTarget.setAttribute('aria-expanded', String(!notificationMenu.hidden));
-    });
-
-    document.querySelectorAll('[data-profile-toggle]').forEach((button) => button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        closeMenus(profileMenu);
-        profileMenu.hidden = !profileMenu.hidden;
-        document.querySelectorAll('[data-profile-toggle]').forEach((trigger) => trigger.setAttribute('aria-expanded', String(!profileMenu.hidden)));
-    }));
-
-    document.querySelector('[data-mark-read]')?.addEventListener('click', () => {
-        document.querySelectorAll('.notification-item.is-unread').forEach((item) => item.classList.remove('is-unread'));
-        const unreadLabel = document.querySelector('.dropdown-heading > div > span');
-        if (unreadLabel) unreadLabel.textContent = 'Semua sudah dibaca';
-        document.querySelector('.notification-dot')?.remove();
-        showToast('Notifikasi ditandai sudah dibaca.');
-    });
-
     document.querySelectorAll('[data-schedule-filter]').forEach((tab) => tab.addEventListener('click', () => {
         activeScheduleFilter = tab.dataset.scheduleFilter;
         document.querySelectorAll('[data-schedule-filter]').forEach((button) => {
@@ -1442,25 +1474,4 @@ if (dashboard) {
     searchInput?.addEventListener('input', filterContent);
     subjectFilter?.addEventListener('change', filterContent);
     levelFilter?.addEventListener('change', filterContent);
-
-    document.addEventListener('click', (event) => {
-        if (!event.target.closest('.dropdown-wrap')) closeMenus();
-        const action = event.target.closest('[data-toast]');
-        if (action) showToast(action.dataset.toast);
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeMenus();
-            setSidebar(false);
-        }
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-            event.preventDefault();
-            searchInput?.focus();
-        }
-    });
-
-    window.matchMedia('(min-width: 961px)').addEventListener('change', (event) => {
-        if (event.matches) setSidebar(false);
-    });
 }
