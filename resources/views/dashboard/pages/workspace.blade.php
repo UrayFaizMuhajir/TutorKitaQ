@@ -28,7 +28,10 @@
     <dialog class="catalog-profile-dialog" data-catalog-profile-dialog aria-labelledby="catalog-profile-name"><button class="catalog-dialog-close" type="button" aria-label="Tutup" data-catalog-dialog-close>×</button><div data-catalog-profile-content></div></dialog>
 </section>
 
-<section class="dashboard-page spa-page sessions-page" data-spa-page="sessions" data-session-config data-store-url="{{ route('dashboard.sessions.store') }}" data-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => '__ID__']) }}" data-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => '__ID__']) }}" hidden>
+@php
+    $canRequestSessions = ($user['role'] ?? 'student') === 'student';
+@endphp
+<section class="dashboard-page spa-page sessions-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="{{ $canRequestSessions ? '1' : '0' }}" data-store-url="{{ route('dashboard.sessions.store') }}" data-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => '__ID__']) }}" data-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => '__ID__']) }}" hidden>
     <div class="sessions-heading"><div><span class="section-kicker">RUANG BELAJARMU</span><h1>Sesi <em>Belajar</em></h1></div><span class="session-total"><strong>{{ $learning_sessions->count() }}</strong> sesi tercatat</span></div>
     <div class="sessions-layout">
         <div class="sessions-main-column">
@@ -38,7 +41,7 @@
                 <button type="button" role="tab" aria-selected="false" data-session-filter="completed"><x-icon name="check"/> Sesi Selesai</button>
                 <button type="button" role="tab" aria-selected="false" data-session-filter="cancelled"><x-icon name="x"/> Sesi Dibatalkan</button>
                 <button type="button" role="tab" aria-selected="false" data-session-filter="pending"><x-icon name="document"/> Pengajuan Sesi</button>
-                <button class="session-new-button" type="button" data-session-dialog-open><x-icon name="plus"/> Ajukan Sesi Baru</button>
+                @if ($canRequestSessions)<button class="session-new-button" type="button" data-session-dialog-open><x-icon name="plus"/> Ajukan Sesi Baru</button>@endif
             </nav>
             <div class="session-list-heading"><div><h2 data-session-heading>Sesi Mendatang</h2><p data-session-description>Jadwal sesi belajar yang sudah dikonfirmasi atau menunggu konfirmasi.</p></div><span class="session-filter-count" aria-live="polite"><strong data-session-count>{{ $learning_sessions->count() }}</strong> sesi</span></div>
             <div class="session-list" data-session-list>
@@ -49,7 +52,7 @@
                         <div class="session-actions-block"><span class="session-status status-{{ $session->display_status }}">@if ($session->display_status === 'in_progress')<i></i>@endif{{ $session->status_label }}</span><div class="session-action-buttons"><button class="button button-outline" type="button" data-session-detail> Lihat Detail </button>@if ($session->can_join)<a class="button button-primary" href="{{ $session->meeting_url }}" target="_blank" rel="noopener noreferrer"><x-icon name="video"/> Masuk Kelas</a>@else<button class="button button-primary is-disabled" type="button" disabled title="Tautan kelas akan aktif setelah dibagikan tutor."><x-icon name="video"/> Masuk Kelas</button>@endif</div></div>
                     </article>
                 @endforeach
-                <div class="sessions-empty" data-session-empty @if ($learning_sessions->isNotEmpty()) hidden @endif><span class="spa-icon"><x-icon name="calendar"/></span><h3>Belum ada sesi belajar</h3><p>Ajukan sesi baru untuk mulai menyusun jadwal belajar dengan tutor.</p><button type="button" class="button button-primary" data-session-dialog-open>＋ Ajukan Sesi Baru</button></div>
+                <div class="sessions-empty" data-session-empty @if ($learning_sessions->isNotEmpty()) hidden @endif><span class="spa-icon"><x-icon name="calendar"/></span><h3>Belum ada sesi belajar</h3>@if ($canRequestSessions)<p>Ajukan sesi baru untuk mulai menyusun jadwal belajar dengan tutor.</p><button type="button" class="button button-primary" data-session-dialog-open>＋ Ajukan Sesi Baru</button>@else<p>Pengajuan sesi belajar hanya dapat dilakukan oleh akun Siswa.</p>@endif</div>
                 <div class="sessions-empty sessions-filter-empty" data-session-filter-empty hidden><span class="spa-icon"><x-icon name="search"/></span><h3>Belum ada sesi pada kategori ini</h3><p>Sesi dengan status tersebut akan muncul di sini.</p></div>
             </div>
         </div>
@@ -68,9 +71,10 @@
                     <div class="schedule-empty"><span class="today-session-icon"><x-icon name="calendar"/></span><p>Jadwal minggu ini akan muncul setelah sesi dikonfirmasi.</p></div>
                 @endforelse
             </section>
-            <button class="session-promo-card" type="button" data-session-dialog-open><span class="session-promo-icon"><x-icon name="graduation-cap"/></span><span><strong>Ajukan Sesi Belajar Baru</strong><small>Temukan tutor dan pilih jadwal yang sesuai dengan waktu luangmu.</small></span><i><x-icon name="arrow-right"/></i></button>
+            @if ($canRequestSessions)<button class="session-promo-card" type="button" data-session-dialog-open><span class="session-promo-icon"><x-icon name="graduation-cap"/></span><span><strong>Ajukan Sesi Belajar Baru</strong><small>Temukan tutor dan pilih jadwal yang sesuai dengan waktu luangmu.</small></span><i><x-icon name="arrow-right"/></i></button>@endif
         </aside>
     </div>
+    @if ($canRequestSessions)
     <dialog class="session-dialog" data-session-create-dialog aria-labelledby="session-create-title"><button class="session-dialog-close" type="button" aria-label="Tutup" data-session-dialog-close>×</button><span class="section-kicker">MULAI BELAJAR BERSAMA</span><h2 id="session-create-title">Ajukan Sesi Belajar Baru</h2><p class="session-dialog-lead">Pilih tutor dan waktu yang kamu inginkan. Pengajuan akan menunggu konfirmasi tutor.</p><form data-session-create-form action="{{ route('dashboard.sessions.store') }}" method="post">@csrf
         <label>Nama Tutor<select name="tutor_name" required data-session-tutor-select>@foreach ($session_tutors as $tutor)<option value="{{ $tutor['name'] }}" data-subjects="{{ implode('|', $tutor['subjects']) }}" data-levels="{{ implode('|', $tutor['levels']) }}" @disabled(! $tutor['available'])>{{ $tutor['name'] }} · {{ implode(', ', $tutor['subjects']) }}{{ $tutor['available'] ? '' : ' · Tidak tersedia' }}</option>@endforeach</select></label>
         <label>Mata Pelajaran<select name="subject" required data-session-subject></select></label>
@@ -80,6 +84,7 @@
         <p class="session-form-note"><x-icon name="info"/> Tautan kelas akan ditambahkan oleh tutor setelah sesi dikonfirmasi.</p><p class="session-form-error" data-session-form-error role="alert" hidden></p>
         <div class="session-dialog-actions"><button class="button button-outline" type="button" data-session-dialog-close>Batal</button><button class="button button-primary" type="submit" data-session-submit>Ajukan Sesi <x-icon name="arrow-right" class="icon-sm"/></button></div>
     </form></dialog>
+    @endif
     <dialog class="session-dialog session-detail-dialog" data-session-detail-dialog aria-labelledby="session-detail-title"><button class="session-dialog-close" type="button" aria-label="Tutup" data-session-detail-close>×</button><div data-session-detail-content><span class="section-kicker">DETAIL SESI BELAJAR</span><h2 id="session-detail-title">Memuat detail sesi</h2><p>Mohon tunggu sebentar.</p></div><div class="session-dialog-actions"><button class="button button-outline" type="button" data-session-detail-close>Tutup</button><button class="button button-danger" type="button" data-session-cancel hidden>Batalkan Sesi</button></div></dialog>
 </section>
 

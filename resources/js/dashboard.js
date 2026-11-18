@@ -1220,7 +1220,8 @@ if (dashboard) {
                 fields.append(term, description);
             });
             sessionDetailContent.replaceChildren(kicker, title, fields);
-            const canCancel = ['pending', 'confirmed'].includes(item.status) && new Date(item.starts_at) > new Date();
+            const canCancel = sessionPage.dataset.canManageSessions === '1'
+                && ['pending', 'confirmed'].includes(item.status) && new Date(item.starts_at) > new Date();
             sessionCancelButton.hidden = !canCancel;
             sessionCancelButton.dataset.url = card.dataset.sessionCancelUrl;
         } catch (error) {

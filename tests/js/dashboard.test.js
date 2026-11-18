@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Kerangka minimal halaman dashboard. Urutan elemen sengaja mengikuti Blade asli:
 // kartu sesi (dengan data-session-tutor) berada SEBELUM dialog pengajuan sesi.
-const dashboardHtml = ({ withSession = true } = {}) => `
+const dashboardHtml = ({ withSession = true, student = true } = {}) => `
     <aside class="sidebar" id="main-sidebar">
         <nav data-spa-nav>
             <button type="button" data-page-link="dashboard">Beranda</button>
@@ -27,9 +27,9 @@ const dashboardHtml = ({ withSession = true } = {}) => `
     </header>
     <main id="main-content">
         <div class="spa-page" data-spa-page="dashboard"></div>
-        <section class="spa-page" data-spa-page="sessions" data-session-config hidden>
+        <section class="spa-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="${student ? '1' : '0'}" hidden>
             <button type="button" data-session-filter="all">Semua Sesi</button>
-            <button type="button" data-session-dialog-open>Ajukan Sesi Baru</button>
+            ${student ? '<button type="button" data-session-dialog-open>Ajukan Sesi Baru</button>' : ''}
             <h2 data-session-heading></h2><p data-session-description></p><strong data-session-count></strong>
             <div class="session-list" data-session-list>
                 ${withSession ? `
@@ -40,6 +40,7 @@ const dashboardHtml = ({ withSession = true } = {}) => `
                 <div data-session-empty ${withSession ? 'hidden' : ''}></div>
                 <div data-session-filter-empty hidden></div>
             </div>
+            ${student ? `
             <dialog data-session-create-dialog>
                 <form data-session-create-form action="/dashboard/sessions" method="post">
                     <select name="tutor_name" data-session-tutor-select>
@@ -50,7 +51,7 @@ const dashboardHtml = ({ withSession = true } = {}) => `
                     <p data-session-form-error hidden></p>
                     <button type="submit" data-session-submit>Ajukan</button>
                 </form>
-            </dialog>
+            </dialog>` : ''}
             <dialog data-session-detail-dialog>
                 <div data-session-detail-content></div>
                 <button type="button" data-session-detail-close>Tutup</button>
@@ -154,6 +155,23 @@ describe('dashboard.js', () => {
         document.querySelector('[data-session-detail]').click();
         await flush();
         expect(document.querySelector('[data-session-detail-dialog]').open).toBe(true);
+    });
+
+    it('tutor/admin (tanpa dialog pengajuan) tetap bisa melihat detail, tetapi tombol Batalkan disembunyikan', async () => {
+        await loadDashboard(dashboardHtml({ student: false }));
+
+        expect(consoleError).not.toHaveBeenCalled();
+        expect(document.querySelector('[data-session-create-form]')).toBeNull();
+
+        document.querySelector('.sidebar-user-profile').click();
+        expect(profileMenu().hidden).toBe(false);
+
+        document.querySelector('[data-session-detail]').click();
+        await flush();
+        await flush();
+        expect(document.querySelector('[data-session-detail-dialog]').open).toBe(true);
+        expect(document.querySelector('[data-session-detail-content]').textContent).toContain('Alya Putri');
+        expect(document.querySelector('[data-session-cancel]').hidden).toBe(true);
     });
 
     it('tetap berfungsi tanpa sesi sama sekali', async () => {

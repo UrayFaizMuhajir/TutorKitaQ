@@ -8,6 +8,7 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 
 ## Perintah penting
 - `php artisan test` — seluruh tes (SQLite :memory:, user store sementara; aman dijalankan).
+- `npm test` — tes JS (`tests/js/*.test.js`, vitest + jsdom; konfigurasi `vitest.config.js`). Jalankan bila JS berubah.
 - `npm run build` — wajib setelah mengubah CSS/JS.
 - `php artisan route:list --except-vendor -v` — route + middleware.
 - `php artisan migrate:status` — cek migrasi (read-only).
@@ -24,6 +25,7 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   - `admin@tutorkita.test` — Admin (id 3, dibuat via `php artisan tutorkita:admin`)
   - `tutor@tutorkita.test` — Tutor (id 5, daftar sebagai Siswa → ajukan tutor → disetujui Admin)
   - `siswa@tutorkita.test` — Siswa (id 4, daftar via `/register`)
+  - `gustitest@gmail.com` ("gudti") — Tutor (id 6, dibuat 2026-11-17; daftar sebagai Siswa → disetujui jadi Tutor)
 - Akun lama id 1 dan 2 (data teman) — jangan diubah.
 
 ## Status langkah persiapan (2026-11-16)
@@ -33,6 +35,19 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 - P3 selesai: backup di `database/backup-20261116-154938/` (database.sqlite + users.json); 3 akun uji dibuat.
 - Alur pengajuan tutor (Siswa mengajukan → Admin menyetujui → login sebagai Tutor) sudah teruji manual di browser
   pada 2026-11-16; data DB konsisten (pengajuan id 1 approved, `user_role_changes` source `tutor_application_approval`).
+- Perbaikan bug dashboard (2026-11-18, belum di-commit, menunggu uji browser pemilik proyek):
+  - Penyebab: kartu sesi dan `<select>` tutor sama-sama memakai `data-session-tutor`; `dashboard.js` mengambil kartu
+    sebagai select → TypeError saat inisialisasi → Lihat Detail, Batalkan, menu profil, logout, notifikasi ikut mati
+    bagi SEMUA akun yang punya ≥1 sesi. Select kini `data-session-tutor-select` dan dicari di dalam form.
+  - Ketahanan: kerangka (sidebar, notifikasi, menu profil/logout, klik global, Esc) dipasang paling awal di
+    `dashboard.js`; render daftar sesi/riwayat dibungkus `safeInit`. Tombol ⌄ sidebar kini membuka menu profil.
+  - Ruang kosong di atas judul halaman: `.spa-page` diberi `align-content: start`.
+  - Pengajuan/pembatalan sesi hanya Siswa (`role:student`); tombol & dialog pengajuan disembunyikan untuk Tutor/Admin.
+  - Backup sebelum perbaikan: `database/backup-20261118-074917/`.
+  - Rencana commit (setelah pemilik bilang oke): (a) perbaikan bug + ketahanan + ruang kosong + ⌄;
+    (b) pembatasan pengajuan sesi hanya Siswa.
+  - Sesi uji `learning_sessions` id 1 milik gudti (tutor tercatat sebagai siswa) DIBIARKAN untuk uji browser;
+    hapus setelah pemilik mengonfirmasi perbaikan berhasil.
 - Langkah berikutnya: ROADMAP 0.1 (tunjukkan rencana dulu, tunggu persetujuan).
 
 ## Arsitektur
@@ -59,7 +74,7 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 
 ### Tahap 0: Fondasi
 - 0.1 Tampilan per role (sidebar, beranda, menu; satu sumber definisi menu per role) — **Belum** (hanya menu profil yang beda).
-- 0.2 Pengecekan role via middleware `role:` di route sesi/materi/tugas/mapel + tes diizinkan/ditolak — **Belum** (baru 2 route).
+- 0.2 Pengecekan role via middleware `role:` di route sesi/materi/tugas/mapel + tes diizinkan/ditolak — **Sebagian** (pengajuan tutor, keputusan admin, dan pengajuan/pembatalan sesi `role:student` + tes; materi/tugas/mapel belum).
 - 0.3 Keamanan login: pesan error seragam + rate limit (mis. 5/menit per kontak+IP) — **Belum**.
 
 ### Tahap 1: Admin
@@ -75,7 +90,7 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 
 ### Tahap 3: Alur sesi (urutan wajib)
 - 3.1 Katalog tutor asli + slot kosong (ganti `DashboardMockData`; filter dari DB) — **Sebagian** (UI ada, data mock).
-- 3.2 Ajukan/batalkan sesi (`tutor_id`, `slot_id` aditif; anti pesan ganda dalam transaksi; hanya Siswa) — **Sebagian** (store/cancel ke tutor mock).
+- 3.2 Ajukan/batalkan sesi (`tutor_id`, `slot_id` aditif; anti pesan ganda dalam transaksi; hanya Siswa) — **Sebagian** (store/cancel ke tutor mock; "hanya Siswa" sudah).
 - 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Belum**.
 - 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
 
@@ -111,7 +126,14 @@ Kartu Jira yang diabaikan dulu: TT-14, TT-23, TT-24, TT-25.
 - Status sesi `completed` dihitung otomatis dari waktu, bukan ditandai tutor — ROADMAP 3.4.
 - Mapel/jenjang di `learning_materials` dan `learning_sessions` disimpan sebagai teks, bukan FK; materi punya jenjang
   "Perguruan Tinggi" yang tidak ada di `grade_levels` — ROADMAP 2.3/3.2.
-- Sidebar belum menyesuaikan role; route sesi & materi bisa diakses semua role — ROADMAP 0.1/0.2.
+- Sidebar belum menyesuaikan role; route materi/tugas/mapel belum memakai `role:` (sesi sudah) — ROADMAP 0.1/0.2.
+- Tombol ⌄ sidebar membuka menu profil yang posisinya di kanan atas (topbar), bukan di dekat tombolnya — ROADMAP 0.1.
+- Halaman Riwayat Sesi: kolom kanan menumpuk di atas hero/statistik pada lebar ±1440px (sudah ada sebelum 2026-11-18).
+- `npm audit`: advisory ReDoS `picomatch` (high, hanya dev tooling Vite/vitest); perbaikannya butuh `--force` (breaking).
+- Blade: jangan campur `@php(...)` inline dengan blok `@php … @endphp` di file yang sama (salah parse →
+  "Undefined variable"). `workspace.blade.php` memakai blok.
+- Tes yang mengubah role lewat `DB::table('user_roles')` harus memanggil `Auth::logout()` lalu
+  `Auth::login(Auth::guard()->getProvider()->retrieveById($id))`; tanpa itu user lama (role lama) tetap di-cache.
 - `AssignmentController::create` menerima student_id siapa pun — ROADMAP 4.1.
 - Query N+1 di daftar pengguna admin; `FileUserProvider` query role tiap request — ROADMAP 1.4.
 - Kode mati: `SubjectsMockData`, `welcome.blade.php`, `components/subject-card.blade.php`, file `[` di root — ROADMAP 6.2.

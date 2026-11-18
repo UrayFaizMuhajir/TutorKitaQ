@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\LearningSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class LearningSessionTest extends TestCase
@@ -111,6 +112,66 @@ class LearningSessionTest extends TestCase
             ->assertJsonPath('message', 'Mata pelajaran tidak sesuai dengan tutor yang dipilih.');
 
         $this->assertDatabaseCount('learning_sessions', 0);
+    }
+
+    public function test_student_sees_session_request_controls(): void
+    {
+        $this->registerAndSignIn('Budi', 'budi@test.com');
+
+        $this->get('/dashboard')->assertOk()
+            ->assertSee('data-can-manage-sessions="1"', false)
+            ->assertSee('data-session-dialog-open', false)
+            ->assertSee('data-session-create-form', false);
+    }
+
+    public function test_tutor_and_admin_cannot_request_or_cancel_sessions(): void
+    {
+        $request = [
+            'tutor_name' => 'Alya Putri',
+            'subject' => 'Matematika',
+            'topic' => 'Persamaan kuadrat',
+            'grade_level' => 'SMP',
+            'starts_at' => now()->addDays(2)->setTime(10, 0)->format('Y-m-d\\TH:i'),
+        ];
+
+        foreach (['tutor' => ['Gudti', 'gudti@test.com'], 'admin' => ['Admin', 'admin@test.com']] as $role => [$name, $contact]) {
+            $this->registerAndSignIn($name, $contact);
+            $userId = (string) auth()->id();
+            DB::table('user_roles')->where('user_id', $userId)->update(['role' => $role]);
+            Auth::logout();
+            Auth::login(Auth::guard()->getProvider()->retrieveById($userId));
+            // Sesi milik akun itu sendiri: penolakan harus karena role, bukan karena kepemilikan.
+            $session = LearningSession::query()->create([
+                'student_id' => $userId,
+                'tutor_name' => 'Alya Putri',
+                'tutor_university' => 'Universitas Indonesia',
+                'tutor_major' => 'Pendidikan Matematika',
+                'subject' => 'IPA',
+                'topic' => "Sesi lama {$role}",
+                'grade_level' => 'SMP',
+                'starts_at' => now()->addDays(7),
+                'duration_minutes' => 60,
+                'meeting_platform' => 'Google Meet',
+                'status' => 'pending',
+            ]);
+
+            $this->postJson(route('dashboard.sessions.store'), $request)
+                ->assertForbidden()
+                ->assertJsonPath('message', 'Kamu tidak memiliki akses untuk tindakan ini.');
+            $this->postJson(route('dashboard.sessions.cancel', $session->id))->assertForbidden();
+            $this->assertDatabaseHas('learning_sessions', ['id' => $session->id, 'status' => 'pending']);
+
+            $this->getJson(route('dashboard.sessions.show', $session->id))->assertOk();
+            $this->get('/dashboard')->assertOk()
+                ->assertSee('data-can-manage-sessions="0"', false)
+                ->assertSee('data-session-card', false)
+                ->assertDontSee('data-session-dialog-open', false)
+                ->assertDontSee('data-session-create-form', false);
+
+            $this->post('/logout');
+        }
+
+        $this->assertDatabaseCount('learning_sessions', 2);
     }
 
     private function registerAndSignIn(string $name, string $contact): void

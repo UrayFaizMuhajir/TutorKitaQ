@@ -26,8 +26,8 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/dashboard/sessions/{learningSession}', [LearningSessionController::class, 'show'])->name('dashboard.sessions.show');
-    Route::post('/dashboard/sessions', [LearningSessionController::class, 'store'])->name('dashboard.sessions.store');
-    Route::post('/dashboard/sessions/{learningSession}/cancel', [LearningSessionController::class, 'cancel'])->name('dashboard.sessions.cancel');
+    Route::post('/dashboard/sessions', [LearningSessionController::class, 'store'])->middleware('role:student')->name('dashboard.sessions.store');
+    Route::post('/dashboard/sessions/{learningSession}/cancel', [LearningSessionController::class, 'cancel'])->middleware('role:student')->name('dashboard.sessions.cancel');
     Route::get('/dashboard/materials/{learningMaterial}', [LearningMaterialController::class, 'show'])->name('dashboard.materials.show');
     Route::post('/dashboard/materials', [LearningMaterialController::class, 'store'])->name('dashboard.materials.store');
     Route::put('/dashboard/materials/{learningMaterial}', [LearningMaterialController::class, 'update'])->name('dashboard.materials.update');
