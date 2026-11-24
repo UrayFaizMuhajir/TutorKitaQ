@@ -17,6 +17,7 @@ class StudentVerificationTest extends TestCase
 {
     use RefreshDatabase;
     use \Tests\Concerns\CreatesVerifiedTutor;
+    use \Tests\Concerns\CreatesBookableSlot;
 
     private string $userStorePath;
 
@@ -235,10 +236,13 @@ class StudentVerificationTest extends TestCase
 
     private function sessionPayload(): array
     {
-        return ['tutor_name' => 'Alya Putri', 'subject' => 'Matematika', 'topic' => 'Persamaan kuadrat', 'grade_level' => 'SMP',
-            'starts_at' => now()->addDays(2)->setTime(10, 0)->format('Y-m-d\\TH:i')];
+        // Sejak pengajuan berbasis slot (ROADMAP 3.2): payload memakai slot tutor asli, bukan tutor mock.
+        $this->payloadSlot ??= $this->bookableSlot();
+
+        return $this->slotPayload($this->payloadSlot);
     }
 
+    private ?\App\Models\TutorAvailabilitySlot $payloadSlot = null;
     private function realUpload(string $name, string $content): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'doc');

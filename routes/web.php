@@ -34,6 +34,8 @@ Route::middleware('auth')->group(function (): void {
     // Mengajukan sesi: hanya siswa terverifikasi (ROADMAP 5.1). Membatalkan sesi tetap boleh.
     Route::post('/dashboard/sessions', [LearningSessionController::class, 'store'])->middleware(['role:student', 'student.verified'])->name('dashboard.sessions.store');
     Route::post('/dashboard/sessions/{learningSession}/cancel', [LearningSessionController::class, 'cancel'])->middleware('role:student')->name('dashboard.sessions.cancel');
+    // Ganti jadwal (TT-25): pindah ke slot lain tutor yang sama; hanya siswa terverifikasi.
+    Route::post('/dashboard/sessions/{learningSession}/reschedule', [LearningSessionController::class, 'reschedule'])->middleware(['role:student', 'student.verified'])->name('dashboard.sessions.reschedule');
     Route::get('/dashboard/materials/{learningMaterial}', [LearningMaterialController::class, 'show'])->name('dashboard.materials.show');
     // Mengelola materi/tugas: hanya tutor terverifikasi (cek role + verifikasi di middleware tutor.verified).
     Route::post('/dashboard/materials', [LearningMaterialController::class, 'store'])->middleware('tutor.verified')->name('dashboard.materials.store');

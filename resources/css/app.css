@@ -2015,3 +2015,11 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .home-tutor-copy h3 { margin: 0; font-size: 15px; }
 .home-tutor-copy p { margin: 2px 0 6px; color: var(--tk-muted); font-size: 12px; }
 .home-tutor-copy small { color: var(--tk-muted); font-size: 11px; }
+
+/* Bentrok jadwal & ganti jadwal (ROADMAP 3.2 · TT-25) */
+.session-conflict-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; background: #fde8e8; color: #b42318; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.session-card.has-conflict { border-color: #f5b5b5 !important; box-shadow: 0 0 0 2px rgb(220 38 38 / 12%); }
+.session-conflict-warning { margin: 0; padding: 10px 12px; border: 1px solid #f5b5b5; border-radius: 10px; background: #fff1f1; color: #b42318; font-size: 13px; font-weight: 600; }
+.session-reschedule { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border: 1px dashed #b9d6fa; border-radius: 12px; }
+.session-reschedule select { width: 100%; min-height: 40px; }
+.session-reschedule .button { justify-self: start; width: auto; padding-inline: 14px; background: var(--tk-blue); color: #fff; }

@@ -42,10 +42,13 @@ const dashboardHtml = ({ withSession = true, student = true } = {}) => `
             </div>
             ${student ? `
             <dialog data-session-create-dialog>
-                <form data-session-create-form action="/dashboard/sessions" method="post">
-                    <select name="tutor_name" data-session-tutor-select>
-                        <option value="Alya Putri" data-subjects="Matematika|IPA" data-levels="SD|SMP">Alya Putri</option>
+                <form data-session-create-form action="/dashboard/sessions" method="post" data-subject-levels='{"Matematika":["SD","SMP"],"IPA":["SMP"]}' data-active-intervals="[]">
+                    <!-- Sejak pengajuan berbasis slot (ROADMAP 3.2): jenjang dari peta mapel, bukan atribut opsi tutor. -->
+                    <select name="tutor_id" data-session-tutor-select>
+                        <option value="5" data-subjects="Matematika|IPA">Alya Putri</option>
                     </select>
+                    <select name="slot_id" data-session-slot-select><option value="">Pilih</option><option value="9" data-tutor="5" data-start="100" data-end="200">Slot</option></select>
+                    <p data-session-conflict-warning hidden></p>
                     <select name="subject" data-session-subject></select>
                     <select name="grade_level" data-session-level></select>
                     <p data-session-form-error hidden></p>

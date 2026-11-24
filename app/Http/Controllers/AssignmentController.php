@@ -24,7 +24,7 @@ class AssignmentController extends Controller
             'subject' => $task->subject,
             'tutor_name' => $task->tutor_name,
             'instructions' => $task->instructions,
-            'due_at' => $task->due_at->locale('id')->isoFormat('D MMMM YYYY, HH:mm'),
+            'due_at' => \App\Support\UserTime::dateTime($task->due_at),
             'is_overdue' => now()->greaterThan($task->due_at),
             'accepts_text' => $task->accepts_text,
             'accepts_file' => $task->accepts_file,

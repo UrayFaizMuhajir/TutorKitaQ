@@ -44,6 +44,7 @@ class TutorSlotController extends Controller
         $created = [];
         $skipped = [];
         DB::transaction(function () use ($data, $tutorId, &$created, &$skipped): void {
+            $created = []; $skipped = []; // aman bila transaksi dicoba ulang
             // Dihitung ulang di dalam transaksi: yang tersimpan hanya tanggal tanpa bentrok (sama dengan pratinjau).
             foreach (SlotPlanner::plan($tutorId, $data['date'], $data['start_time'], $data['end_time'], $data['repeat_until']) as $item) {
                 if (! $item['ok']) { $skipped[] = $item['label'].' ('.$item['reason'].')'; continue; }
@@ -53,7 +54,7 @@ class TutorSlotController extends Controller
                 ]);
                 $created[] = $item['label'];
             }
-        });
+        }, 5); // dicoba ulang bila SQLite sibuk
         if ($created === []) {
             throw ValidationException::withMessages(['slot' => 'Tidak ada slot yang dibuat. '.implode('; ', $skipped)]);
         }
@@ -83,7 +84,7 @@ class TutorSlotController extends Controller
                 $fresh = TutorAvailabilitySlot::query()->whereKey($model->id)->lockForUpdate()->firstOrFail();
                 abort_if($data['capacity'] < $fresh->booked_count, 409, 'Kapasitas tidak boleh kurang dari jumlah pemesan.');
                 $fresh->update(['capacity' => $data['capacity'], 'status' => $fresh->booked_count >= $data['capacity'] ? 'full' : 'open']);
-            });
+            }, 5);
 
             return redirect(self::PAGE)->with('status', 'Kapasitas slot diperbarui.');
         }
@@ -95,7 +96,7 @@ class TutorSlotController extends Controller
             $fresh = TutorAvailabilitySlot::query()->whereKey($model->id)->lockForUpdate()->firstOrFail();
             abort_if($fresh->booked_count > 0, 409, 'Slot ini baru saja dipesan siswa; tanggal dan jam tidak bisa diubah.');
             $fresh->update(['starts_at' => $plan['starts_at'], 'ends_at' => $plan['ends_at'], 'capacity' => $data['capacity'], 'status' => 'open']);
-        });
+        }, 5);
 
         return redirect(self::PAGE)->with('status', 'Slot diperbarui.');
     }
@@ -108,7 +109,7 @@ class TutorSlotController extends Controller
             abort_if($fresh->booked_count > 0 || $fresh->activeSessions()->exists(), 409, 'Slot yang sudah dipesan tidak bisa dihapus. Batalkan dengan alasan.');
             abort_if($fresh->status === 'cancelled', 409, 'Slot ini sudah dibatalkan.');
             $fresh->delete();
-        });
+        }, 5);
 
         return redirect(self::PAGE)->with('status', 'Slot dihapus.');
     }
@@ -123,6 +124,7 @@ class TutorSlotController extends Controller
         $tutorName = (string) ($users->findById($tutorId)['name'] ?? 'Tutor');
         $affected = 0;
         DB::transaction(function () use ($model, $reason, $tutorName, &$affected): void {
+            $affected = 0; // aman bila transaksi dicoba ulang
             $fresh = TutorAvailabilitySlot::query()->whereKey($model->id)->lockForUpdate()->firstOrFail();
             abort_if($fresh->status === 'cancelled', 409, 'Slot ini sudah dibatalkan.');
             abort_if($fresh->starts_at->isPast(), 409, 'Slot yang sudah dimulai tidak bisa dibatalkan.');
@@ -134,7 +136,7 @@ class TutorSlotController extends Controller
                     $tutorName.' membatalkan sesi '.$session->subject.' ('.$label.'). Alasan: '.$reason, '/dashboard#sessions');
             });
             $fresh->update(['status' => 'cancelled', 'cancel_reason' => $reason, 'booked_count' => 0]);
-        });
+        }, 5);
 
         return redirect(self::PAGE)->with('status', 'Slot dibatalkan.'.($affected ? ' '.$affected.' siswa mendapat notifikasi.' : ''));
     }

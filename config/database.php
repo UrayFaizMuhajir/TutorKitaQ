@@ -38,10 +38,12 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            // Pemesanan slot serentak (ROADMAP 3.2): transaksi IMMEDIATE mengambil kunci tulis di awal sehingga penulis
+            // lain MENUNGGU (busy_timeout) alih-alih gagal "database is locked". Lihat CLAUDE.md "Kalau pindah ke MySQL".
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'transaction_mode' => env('DB_TRANSACTION_MODE', 'IMMEDIATE'),
         ],
 
         'mysql' => [

@@ -1170,28 +1170,74 @@ if (dashboard) {
     }));
     safeInit('daftar sesi', renderSessions);
 
+    // Form pengajuan berbasis slot (ROADMAP 3.2): tutor → slot → mapel → jenjang. Bentrok hanya DIPERINGATKAN (merah).
+    const sessionSlotSelect = sessionCreateForm?.querySelector('select[data-session-slot-select]');
+    const sessionConflictWarning = sessionCreateForm?.querySelector('[data-session-conflict-warning]');
+    const parseJson = (value, fallback) => { try { return JSON.parse(value || ''); } catch { return fallback; } };
+    const subjectLevels = parseJson(sessionCreateForm?.dataset.subjectLevels, {});
+    const activeIntervals = parseJson(sessionCreateForm?.dataset.activeIntervals, []);
+    const fillOptions = (select, values, placeholder) => {
+        if (!select) return;
+        const options = values.map((value) => Object.assign(document.createElement('option'), { value, textContent: value }));
+        if (placeholder) options.unshift(Object.assign(document.createElement('option'), { value: '', textContent: placeholder }));
+        select.replaceChildren(...options);
+    };
+    // Mengembalikan label sesi aktif siswa yang bertabrakan dengan [start, end) (detik UTC); excludeId = sesi yang dipindah.
+    const conflictsWith = (start, end, excludeId = null) => activeIntervals
+        .filter((item) => String(item.id) !== String(excludeId) && start < item.end && end > item.start)
+        .map((item) => item.label);
+    const showConflict = (element, labels) => {
+        if (!element) return;
+        element.textContent = labels.length ? `Bentrok dengan sesi ${labels.join('; ')}. Kamu tetap boleh melanjutkan.` : '';
+        element.hidden = labels.length === 0;
+    };
+    const syncSessionLevels = () => {
+        if (!(sessionSubjectSelect instanceof HTMLSelectElement)) return;
+        fillOptions(sessionLevelSelect, subjectLevels[sessionSubjectSelect.value] || []);
+    };
+    const syncSessionConflict = () => {
+        const option = sessionSlotSelect?.selectedOptions?.[0];
+        if (!option || !option.value) { showConflict(sessionConflictWarning, []); return; }
+        showConflict(sessionConflictWarning, conflictsWith(Number(option.dataset.start), Number(option.dataset.end)));
+    };
     const syncSessionSubjects = () => {
         if (!(sessionTutorSelect instanceof HTMLSelectElement) || !(sessionSubjectSelect instanceof HTMLSelectElement)) return;
+        const tutorId = sessionTutorSelect.value;
         const option = sessionTutorSelect.selectedOptions[0];
-        const subjects = (option?.dataset.subjects || '').split('|').filter(Boolean);
-        const levels = (option?.dataset.levels || '').split('|').filter(Boolean);
-        sessionSubjectSelect.replaceChildren(...subjects.map((subject) => {
-            const subjectOption = document.createElement('option');
-            subjectOption.value = subject;
-            subjectOption.textContent = subject;
-            return subjectOption;
-        }));
-        if (sessionLevelSelect) {
-            sessionLevelSelect.replaceChildren(...levels.map((level) => {
-                const levelOption = document.createElement('option');
-                levelOption.value = level;
-                levelOption.textContent = level;
-                return levelOption;
-            }));
+        fillOptions(sessionSubjectSelect, (option?.dataset.subjects || '').split('|').filter(Boolean));
+        syncSessionLevels();
+        if (sessionSlotSelect) {
+            let visible = 0;
+            [...sessionSlotSelect.options].forEach((slot) => {
+                if (!slot.value) { slot.textContent = tutorId ? 'Pilih slot' : 'Pilih tutor dulu'; return; }
+                const matches = slot.dataset.tutor === tutorId;
+                slot.hidden = !matches;
+                slot.disabled = !matches;
+                if (matches) visible += 1;
+            });
+            if (sessionSlotSelect.selectedOptions[0]?.disabled) sessionSlotSelect.value = '';
+            if (tutorId && !visible) sessionSlotSelect.options[0].textContent = 'Tutor ini belum punya slot kosong';
         }
+        syncSessionConflict();
     };
     sessionTutorSelect?.addEventListener('change', syncSessionSubjects);
+    sessionSubjectSelect?.addEventListener('change', syncSessionLevels);
+    sessionSlotSelect?.addEventListener('change', syncSessionConflict);
     safeInit('form pengajuan sesi', syncSessionSubjects);
+
+    // "Pilih slot ini" dari katalog → buka form pengajuan dengan tutor & slot terpilih.
+    document.addEventListener('tutorkita:pick-slot', (event) => {
+        if (!sessionCreateDialog || !sessionTutorSelect || !sessionSlotSelect) return;
+        event.preventDefault();
+        showPage('sessions');
+        sessionTutorSelect.value = event.detail.tutorId;
+        syncSessionSubjects();
+        sessionSlotSelect.value = event.detail.slotId;
+        syncSessionConflict();
+        if (sessionFormError) sessionFormError.hidden = true;
+        if (!sessionCreateDialog.open) sessionCreateDialog.showModal();
+    });
+
 
     sessionPage?.querySelectorAll('[data-session-dialog-open]').forEach((button) => button.addEventListener('click', () => {
         sessionFormError.hidden = true;
@@ -1227,6 +1273,19 @@ if (dashboard) {
                 && ['pending', 'confirmed'].includes(item.status) && new Date(item.starts_at) > new Date();
             sessionCancelButton.hidden = !canCancel;
             sessionCancelButton.dataset.url = card.dataset.sessionCancelUrl;
+            if (item.conflicts?.length) {
+                const warning = document.createElement('p'); warning.className = 'session-conflict-warning'; warning.textContent = `Bentrok dengan sesi ${item.conflicts.join('; ')}.`;
+                sessionDetailContent.append(warning);
+            }
+            const rescheduleOpen = sessionDetailDialog.querySelector('[data-session-reschedule-open]');
+            const reschedulePanel = sessionDetailDialog.querySelector('[data-session-reschedule]');
+            if (rescheduleOpen && reschedulePanel) {
+                reschedulePanel.hidden = true;
+                rescheduleOpen.hidden = !item.can_reschedule;
+                rescheduleOpen.dataset.sessionId = String(item.id);
+                rescheduleOpen.dataset.tutorId = String(item.tutor_id ?? '');
+                rescheduleOpen.dataset.slotId = String(item.slot_id ?? '');
+            }
         } catch (error) {
             const message = document.createElement('p'); message.className = 'session-form-error'; message.textContent = error.message;
             sessionDetailContent.append(message);
@@ -1285,6 +1344,52 @@ if (dashboard) {
             showToast(error.message);
         } finally {
             sessionCancelButton.disabled = false;
+        }
+    });
+
+    // Ganti jadwal (TT-25): pindah ke slot lain tutor yang sama; bentrok diperingatkan merah, tidak diblokir.
+    const rescheduleOpen = sessionDetailDialog?.querySelector('[data-session-reschedule-open]');
+    const reschedulePanel = sessionDetailDialog?.querySelector('[data-session-reschedule]');
+    const rescheduleSelect = reschedulePanel?.querySelector('[data-session-reschedule-select]');
+    const rescheduleConflict = reschedulePanel?.querySelector('[data-reschedule-conflict]');
+    const rescheduleError = reschedulePanel?.querySelector('[data-reschedule-error]');
+    const syncRescheduleConflict = () => {
+        const option = rescheduleSelect?.selectedOptions?.[0];
+        showConflict(rescheduleConflict, option && option.value ? conflictsWith(Number(option.dataset.start), Number(option.dataset.end), rescheduleOpen?.dataset.sessionId) : []);
+    };
+    rescheduleOpen?.addEventListener('click', () => {
+        if (!reschedulePanel || !rescheduleSelect) return;
+        const options = [...(sessionSlotSelect?.options || [])]
+            .filter((option) => option.value && option.dataset.tutor === rescheduleOpen.dataset.tutorId && option.value !== rescheduleOpen.dataset.slotId)
+            .map((option) => { const copy = option.cloneNode(true); copy.hidden = false; copy.disabled = false; return copy; });
+        rescheduleSelect.replaceChildren(...(options.length ? options : [Object.assign(document.createElement('option'), { value: '', textContent: 'Tidak ada slot lain yang masih kosong' })]));
+        reschedulePanel.hidden = false;
+        if (rescheduleError) rescheduleError.hidden = true;
+        syncRescheduleConflict();
+    });
+    rescheduleSelect?.addEventListener('change', syncRescheduleConflict);
+    reschedulePanel?.querySelector('[data-session-reschedule-submit]')?.addEventListener('click', async (event) => {
+        const slotId = rescheduleSelect?.value;
+        if (!slotId || !sessionPage) return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            const body = new FormData();
+            body.append('slot_id', slotId);
+            const response = await fetch(sessionPage.dataset.rescheduleUrl.replace('__ID__', rescheduleOpen.dataset.sessionId), {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+                body,
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.errors ? Object.values(result.errors).flat().join(' ') : result.message || 'Jadwal belum bisa dipindahkan.');
+            sessionDetailDialog.close();
+            showToast(result.message);
+            window.location.reload();
+        } catch (error) {
+            if (rescheduleError) { rescheduleError.textContent = error.message; rescheduleError.hidden = false; }
+        } finally {
+            button.disabled = false;
         }
     });
 

@@ -17,6 +17,7 @@ class AdminStudentVerificationTest extends TestCase
 {
     use RefreshDatabase;
     use \Tests\Concerns\CreatesVerifiedTutor;
+    use \Tests\Concerns\CreatesBookableSlot;
 
     private string $userStorePath;
 
@@ -82,10 +83,8 @@ class AdminStudentVerificationTest extends TestCase
         $this->post('/logout');
 
         $this->post('/login', ['contact' => 'budi@example.test', 'password' => 'TutorKita123!']);
-        $this->postJson(route('dashboard.sessions.store'), [
-            'tutor_name' => 'Alya Putri', 'subject' => 'Matematika', 'topic' => 'Persamaan kuadrat', 'grade_level' => 'SMP',
-            'starts_at' => now()->addDays(2)->setTime(10, 0)->format('Y-m-d\\TH:i'),
-        ])->assertCreated();
+        // Sejak pengajuan berbasis slot (ROADMAP 3.2): memesan slot tutor asli.
+        $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($this->bookableSlot()))->assertCreated();
     }
 
     public function test_rejection_needs_a_reason_shows_it_to_the_student_and_allows_resubmission(): void

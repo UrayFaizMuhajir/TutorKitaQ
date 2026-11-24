@@ -12,6 +12,7 @@ class LearningSessionTest extends TestCase
 {
     use RefreshDatabase;
     use \Tests\Concerns\CreatesVerifiedStudent;
+    use \Tests\Concerns\CreatesBookableSlot;
 
     private string $userStorePath;
 
@@ -35,24 +36,21 @@ class LearningSessionTest extends TestCase
 
     public function test_student_can_request_a_session_and_it_is_saved_without_a_fake_meeting_link(): void
     {
+        // Sejak pengajuan berbasis slot (ROADMAP 3.2): siswa terverifikasi memesan slot tutor asli (bukan tutor mock).
+        $slot = $this->bookableSlot();
         $this->registerAndSignIn('Budi', 'budi@test.com');
-        // Sejak verifikasi siswa (ROADMAP 5.1), mengajukan sesi butuh siswa terverifikasi.
         $this->markStudentVerified((string) auth()->id());
 
-        $response = $this->postJson(route('dashboard.sessions.store'), [
-            'tutor_name' => 'Alya Putri',
-            'subject' => 'Matematika',
-            'topic' => 'Persamaan kuadrat',
-            'grade_level' => 'SMP',
-            'starts_at' => now()->addDays(2)->setTime(10, 0)->format('Y-m-d\\TH:i'),
-        ])->assertCreated()
+        $response = $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($slot))->assertCreated()
             ->assertJsonPath('session.status', 'pending')
             ->assertJsonPath('session.meeting_url', null);
 
         $session = LearningSession::query()->firstOrFail();
         $this->assertSame((string) auth()->id(), $session->student_id);
-        $this->assertSame('Alya Putri', $session->tutor_name);
+        $this->assertSame('900', $session->tutor_id);
+        $this->assertSame($slot->id, $session->slot_id);
         $this->assertSame('Matematika', $session->subject);
+        $this->assertSame($slot->starts_at->toIso8601String(), $session->starts_at->toIso8601String());
         $this->assertNull($session->meeting_url);
 
         $this->get('/dashboard#sessions')->assertOk()
@@ -62,9 +60,9 @@ class LearningSessionTest extends TestCase
 
         $this->getJson(route('dashboard.sessions.show', $response->json('session.id')))
             ->assertOk()
-            ->assertJsonPath('session.tutor_name', 'Alya Putri');
+            ->assertJsonPath('session.slot_id', $slot->id)
+            ->assertJsonPath('session.can_reschedule', true);
     }
-
     public function test_session_data_is_private_and_owner_can_cancel_a_future_request(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');
@@ -98,27 +96,26 @@ class LearningSessionTest extends TestCase
 
     public function test_unavailable_tutors_and_unmatched_subjects_cannot_be_requested(): void
     {
+        // Sejak pengajuan berbasis slot (ROADMAP 3.2): tutor nonaktif/slot tidak valid/mapel atau jenjang tidak cocok ditolak.
+        $slot = $this->bookableSlot();
         $this->registerAndSignIn('Budi', 'budi@test.com');
-        // Sejak verifikasi siswa (ROADMAP 5.1), mengajukan sesi butuh siswa terverifikasi.
         $this->markStudentVerified((string) auth()->id());
-        $request = [
-            'subject' => 'Bahasa Inggris',
-            'topic' => 'Percakapan sehari-hari',
-            'grade_level' => 'SMP',
-            'starts_at' => now()->addDays(2)->setTime(10, 0)->format('Y-m-d\\TH:i'),
-        ];
 
-        $this->postJson(route('dashboard.sessions.store'), $request + ['tutor_name' => 'Fadli Ibrahim'])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'Tutor ini sedang tidak tersedia. Silakan pilih tutor lain.');
+        DB::table('tutor_profiles')->where('user_id', '900')->update(['is_active' => false]);
+        $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($slot))
+            ->assertUnprocessable()->assertJsonPath('message', 'Tutor ini sedang tidak tersedia.');
+        DB::table('tutor_profiles')->where('user_id', '900')->update(['is_active' => true]);
 
-        $this->postJson(route('dashboard.sessions.store'), $request + ['tutor_name' => 'Alya Putri'])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'Mata pelajaran tidak sesuai dengan tutor yang dipilih.');
+        $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($slot, ['subject' => 'Bahasa Inggris', 'grade_level' => 'SMP']))
+            ->assertUnprocessable()->assertJsonPath('message', 'Mata pelajaran tidak diajarkan tutor ini.');
+        $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($slot, ['grade_level' => 'Perguruan Tinggi']))
+            ->assertUnprocessable()->assertJsonPath('message', 'Jenjang tidak tersedia untuk mata pelajaran ini.');
+        $this->postJson(route('dashboard.sessions.store'), $this->slotPayload($slot, ['slot_id' => 99999]))
+            ->assertUnprocessable()->assertJsonPath('message', 'Slot tidak tersedia.');
 
         $this->assertDatabaseCount('learning_sessions', 0);
+        $this->assertSame(0, $slot->fresh()->booked_count);
     }
-
     public function test_student_sees_session_request_controls(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');

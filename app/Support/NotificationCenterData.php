@@ -51,12 +51,12 @@ class NotificationCenterData
                 default => 'Pengajuan Sesi Belajar',
             };
             self::store($userId, 'session:'.$session->id.':'.$session->status, 'sessions', $statusLabel,
-                $session->subject.' dengan '.$session->tutor_name.' · '.$session->starts_at->locale('id')->isoFormat('D MMM YYYY, HH:mm'), '#sessions');
+                $session->subject.' dengan '.$session->tutor_name.' · '.\App\Support\UserTime::dateTime($session->starts_at), '#sessions');
         });
 
         StudentAssignment::query()->with('submission')->where('student_id', $userId)->get()->each(function (StudentAssignment $assignment) use ($userId): void {
             self::store($userId, 'assignment:'.$assignment->id, 'assignments', 'Tugas Baru',
-                $assignment->tutor_name.' memberikan tugas: “'.$assignment->title.'”. Deadline: '.$assignment->due_at->locale('id')->isoFormat('D MMMM YYYY, HH:mm').'.', '#assignments');
+                $assignment->tutor_name.' memberikan tugas: “'.$assignment->title.'”. Deadline: '.\App\Support\UserTime::dateTime($assignment->due_at).'.', '#assignments');
             $submission = $assignment->submission;
             if ($submission instanceof AssignmentSubmission && $submission->graded_at) {
                 self::store($userId, 'grade:'.$submission->id.':'.$submission->graded_at->timestamp, 'assignments', 'Nilai Tugas Telah Diberikan',

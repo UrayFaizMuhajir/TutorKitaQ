@@ -48,7 +48,9 @@ class DashboardSessionRenderTest extends TestCase
         $html = $this->get('/dashboard')->assertOk()->assertSee('data-session-card', false)->getContent();
 
         $this->assertSame(1, substr_count($html, 'data-session-tutor-select'));
-        $this->assertMatchesRegularExpression('/<select[^>]*name="tutor_name"[^>]*data-session-tutor-select/', $html);
+        // Sejak pengajuan berbasis slot (ROADMAP 3.2): select tutor bernama tutor_id dan ada select slot.
+        $this->assertMatchesRegularExpression('/<select[^>]*name="tutor_id"[^>]*data-session-tutor-select/', $html);
+        $this->assertMatchesRegularExpression('/<select[^>]*name="slot_id"[^>]*data-session-slot-select/', $html);
         $this->assertSame(0, preg_match_all('/data-session-tutor(?=[\s>])/', $html), 'Atribut data-session-tutor tanpa nilai hanya boleh ada di kartu sesi.');
         $this->assertSame(1, substr_count($html, 'data-session-tutor="Alya Putri"'));
     }

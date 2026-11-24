@@ -172,12 +172,17 @@ class DashboardController extends Controller
         }
 
         $now = now();
-        $dashboardData['learning_sessions'] = LearningSession::query()
+        // Zona pengguna: tanggal/jam & batas "hari ini"/"minggu ini" dihitung dalam zona ini; DB tetap UTC.
+        $localNow = \App\Support\UserTime::local($now);
+        $studentSessions = LearningSession::query()
             ->where('student_id', (string) $authenticatedUser->getAuthIdentifier())
             ->orderBy('starts_at')
-            ->get()
-            ->map(function (LearningSession $session) use ($now): LearningSession {
-                $endsAt = $session->starts_at->copy()->addMinutes($session->duration_minutes);
+            ->get();
+        // Bentrok antar sesi aktif siswa (ROADMAP 3.2): ditandai merah, dihitung ulang tiap muat halaman.
+        $conflictMap = \App\Support\SessionBooking::conflictsFor($studentSessions);
+        $dashboardData['learning_sessions'] = $studentSessions
+            ->map(function (LearningSession $session) use ($now, $conflictMap): LearningSession {
+                $endsAt = $session->endsAt();
                 $status = $session->status;
                 if ($status === 'confirmed' && $now->between($session->starts_at, $endsAt)) {
                     $status = 'in_progress';
@@ -197,30 +202,41 @@ class DashboardController extends Controller
                     'completed' => 'Selesai',
                     'cancelled' => 'Dibatalkan',
                 ][$status] ?? 'Menunggu Konfirmasi';
-                $session->date_label = $session->starts_at->locale('id')->isoFormat('dddd, D MMMM YYYY');
-                $session->short_date_label = $session->starts_at->locale('id')->isoFormat('ddd, D MMM YYYY');
-                $session->time_label = $session->starts_at->format('H:i').' – '.$endsAt->format('H:i');
+                $session->local_starts_at = \App\Support\UserTime::local($session->starts_at);
+                $session->date_label = \App\Support\UserTime::dateLong($session->starts_at);
+                $session->short_date_label = $session->local_starts_at->locale('id')->isoFormat('ddd, D MMM YYYY');
+                $session->time_label = \App\Support\UserTime::timeRange($session->starts_at, $endsAt);
                 $session->initials = mb_strtoupper(implode('', array_map(
                     static fn (string $part): string => mb_substr($part, 0, 1),
                     array_slice(preg_split('/\s+/', trim($session->tutor_name), -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 2),
                 )));
                 $session->can_join = in_array($status, ['confirmed', 'in_progress'], true)
                     && $hasRealMeetingUrl
-                    && $now->between($session->starts_at->copy()->subMinutes(15), $endsAt);
+                    && $now->between($session->starts_at->subMinutes((int) config('tutorkita.join_window_minutes')), $endsAt);
                 $session->meeting_url = $hasRealMeetingUrl ? $meetingUrl : null;
+                $conflicts = $conflictMap[$session->id] ?? [];
+                $session->has_conflict = $conflicts !== [];
+                $session->conflict_label = collect($conflicts)->map(fn (LearningSession $other): string => $other->subject.', '.\App\Support\UserTime::slotLabel($other->starts_at, $other->endsAt()))->join('; ');
+                $session->can_reschedule = (bool) $session->slot_id && in_array($session->status, LearningSession::ACTIVE_STATUSES, true) && $session->starts_at->isFuture();
 
                 return $session;
             });
 
         $dashboardData['today_sessions'] = $dashboardData['learning_sessions']
-            ->filter(fn (LearningSession $session): bool => $session->starts_at->isSameDay($now) && $session->display_status !== 'cancelled');
-        $weekStart = $now->copy()->startOfWeek();
-        $weekEnd = $now->copy()->endOfWeek();
+            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->isSameDay($localNow) && $session->display_status !== 'cancelled');
+        $weekStart = $localNow->startOfWeek();
+        $weekEnd = $localNow->endOfWeek();
         $dashboardData['week_sessions'] = $dashboardData['learning_sessions']
-            ->filter(fn (LearningSession $session): bool => $session->starts_at->betweenIncluded($weekStart, $weekEnd) && $session->display_status !== 'cancelled')
+            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->betweenIncluded($weekStart, $weekEnd) && $session->display_status !== 'cancelled')
             ->take(4);
-        // Form pengajuan sesi masih memakai daftar lama sampai pengajuan berbasis slot (ROADMAP 3.2) selesai.
-        $dashboardData['session_tutors'] = DashboardMockData::make()['catalog_tutors'];
+        // Form pengajuan sesi berbasis slot: hanya tutor katalog yang punya slot kosong.
+        $dashboardData['booking_tutors'] = $dashboardData['catalog_tutors']->filter(fn (array $tutor): bool => $tutor['slots'] !== [])->values();
+        $dashboardData['student_active_intervals'] = $studentSessions
+            ->filter(fn (LearningSession $session): bool => in_array($session->status, LearningSession::ACTIVE_STATUSES, true) && $session->endsAt()->greaterThan($now))
+            ->map(fn (LearningSession $session): array => [
+                'id' => $session->id, 'start' => $session->starts_at->getTimestamp(), 'end' => $session->endsAt()->getTimestamp(),
+                'label' => $session->subject.', '.\App\Support\UserTime::slotLabel($session->starts_at, $session->endsAt()),
+            ])->values();
         $dashboardData += SessionHistoryData::make($dashboardData['learning_sessions']);
         $dashboardData += LearningMaterialsDashboardData::make($authenticatedUser);
         $dashboardData['subject_catalog'] = Subject::query()
@@ -237,13 +253,13 @@ class DashboardController extends Controller
         $dashboardData['student_subject_count'] = $studentSubjects->count();
 
         $dashboardData['schedules'] = $dashboardData['learning_sessions']
-            ->filter(fn (LearningSession $session): bool => $session->starts_at->greaterThanOrEqualTo($now->copy()->startOfDay())
+            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->greaterThanOrEqualTo($localNow->startOfDay())
                 && ! in_array($session->display_status, ['cancelled', 'completed'], true))
-            ->map(function (LearningSession $session) use ($now): array {
-                $isToday = $session->starts_at->isSameDay($now);
+            ->map(function (LearningSession $session) use ($localNow): array {
+                $isToday = $session->local_starts_at->isSameDay($localNow);
                 $dateLabel = $isToday
                     ? 'Hari ini'
-                    : ($session->starts_at->isTomorrow() ? 'Besok' : $session->starts_at->locale('id')->isoFormat('dddd, D MMM'));
+                    : ($session->local_starts_at->isSameDay($localNow->addDay()) ? 'Besok' : $session->local_starts_at->locale('id')->isoFormat('dddd, D MMM'));
                 $colors = ['Matematika' => 'blue', 'Bahasa Indonesia' => 'purple', 'Bahasa Inggris' => 'amber'];
 
                 return [
@@ -252,7 +268,8 @@ class DashboardController extends Controller
                     'tutor' => $session->tutor_name,
                     'initials' => $session->initials,
                     'time' => $session->time_label,
-                    'date' => $session->starts_at->toDateString(),
+                    'date' => $session->local_starts_at->toDateString(),
+                    'conflict' => $session->has_conflict ? $session->conflict_label : null,
                     'date_label' => $dateLabel,
                     'status' => $session->status_label,
                     'status_key' => $isToday ? 'today' : 'upcoming',

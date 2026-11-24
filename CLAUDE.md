@@ -69,7 +69,9 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   5.1 profil & dokumen siswa + wajib terverifikasi sebelum mengajukan sesi; 5.2 Admin memverifikasi siswa.
   Backup sebelum migrasi: `database/backup-*-sebelum-1.3/`, `database/backup-*-sebelum-5.1/`. Akun siswa lama (id 1,
   id 4 `siswa@tutorkita.test`) kini berstatus Belum lengkap → harus melengkapi profil sebelum bisa mengajukan sesi.
-- Langkah berikutnya (urutan Jira): uji browser gabungan → lalu TT-7/TT-8 (ROADMAP 2.2 slot tutor) atau 0.2 sisa — rencana dulu.
+- 2026-11-26 TAHAP 1 selesai (BUB): konversi data lama, A slot tutor, B katalog asli, C pesan/batal/ganti jadwal + bentrok.
+- LANJUTKAN DI SESI BARU dari bagian "Rencana kerja mandiri (Tahap 2–6)" di bawah: pemilik mengizinkan kerja mandiri tanpa
+  persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). Mulai dari TAHAP 2 (TT-15).
 
 ## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
 Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
@@ -107,6 +109,22 @@ F. 5.2 Verifikasi Siswa (TT-10) — admin@
   3. Setujui → siswa dapat notifikasi; tombol Ajukan Sesi aktif dan pengajuan sesi berhasil; profil masih bisa diubah,
      bagian dokumen hilang (terkunci).
   4. PRIVASI: login sebagai tutor → tidak ada data wali/kecamatan/dokumen siswa di halaman mana pun; URL dokumen siswa → 403.
+G. Tahap 1: slot, katalog, sesi (2.2, 3.1, 3.2)
+  1. Zona waktu: Windows Settings → Time & language → Time zone (mis. "(UTC+08:00) Makassar"), ATAU Chrome DevTools → ⋮ →
+     More tools → Sensors → Location → pilih lokasi/zona (mis. Asia/Makassar). Muat ulang 2× (cookie tk_tz diperbarui).
+  2. tutor@ (WITA) → Jadwal Saya: tambah slot besok 16.00–17.00 kapasitas 2 → kartu "16.00–17.00 WITA, Terisi 0/2".
+  3. Ulangi tiap minggu 4 minggu dengan satu tanggal sengaja bentrok → Pratinjau: tanggal bentrok MERAH + alasan; Simpan →
+     pesan "N slot dibuat. Dilewati: …" + notifikasi.
+  4. Ganti zona ke Asia/Jakarta → siswa terverifikasi buka Katalog: slot tampil "15.00–16.00 WIB", foto tutor tampil,
+     "Belum ada ulasan"; filter mapel/jenjang/Ada slot kosong; Lihat Profil → Pilih slot ini → form terisi tutor & slot.
+  5. Slot penuh: dua siswa memesan slot kapasitas 2 → siswa ketiga mendapat pesan "Slot ini sudah penuh"; tutor melihat
+     "Terisi 2/2" + nama, mapel, topik (TANPA data wali).
+  6. Bentrok: siswa memesan dua slot yang tumpang tindih → peringatan merah sebelum Ajukan, tetap bisa lanjut; label "Bentrok"
+     di Sesi Belajar, Jadwal Hari Ini/Minggu Ini, beranda; notifikasi "Jadwal bentrok".
+  7. Lihat Detail sesi → Ganti jadwal → hanya slot lain tutor yang sama → simpan → label Bentrok hilang bila sudah tidak tumpang tindih.
+  8. Batalkan sesi → kursi kembali (Terisi turun); tutor dapat notifikasi. Tutor Batalkan slot (alasan) → semua siswa notifikasi.
+  9. Admin nonaktifkan tutor yang punya sesi mendatang → peringatan "X sesi … Y siswa" + centang "Saya paham" wajib.
+  10. Slot < 3 jam lagi tidak muncul di katalog / ditolak.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -158,7 +176,10 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 
 ### Tahap 3: Alur sesi (urutan wajib)
 - 3.1 Katalog tutor asli + slot kosong — **Selesai (BUB), 2026-11-26**: `App\Support\TutorCatalog` (verified+active, jenjang dari mapel, slot open ≥3 jam & ≤14 hari), partial `dashboard/pages/tutor-catalog.blade.php`, foto tutor aktif boleh dilihat pengguna login, "Belum ada ulasan", favorit per id (`tutorkita-favorite-tutor-ids`).
-- 3.2 Ajukan/batalkan sesi (`tutor_id`, `slot_id` aditif; anti pesan ganda dalam transaksi; hanya Siswa) — **Sebagian** (store/cancel ke tutor mock; "hanya Siswa" sudah).
+- 3.2 Ajukan/batalkan sesi — **Selesai (BUB), 2026-11-26**: `App\Support\SessionBooking` (pesan/batal/ganti jadwal, kursi atomik,
+  bentrok ditandai), `LearningSessionController` (store/show/cancel/reschedule), form slot (tutor→slot→mapel→jenjang) + peringatan
+  bentrok merah + "Pilih slot ini" dari katalog, label Bentrok di kartu/jadwal/beranda, notifikasi tutor & siswa. Tes konkuren
+  proses paralel `SessionBookingTest::test_parallel_processes_cannot_overbook_a_slot` (skrip `tests/Support/concurrent-booking.php`).
 - 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Belum**.
 - 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
 
@@ -198,12 +219,12 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. "(BUB)" = belum diuji b
 | TT-9 | [Siswa] Profil + dokumen pendukung | Done | ✅ | `StudentVerificationTest` (termasuk privasi) | Done (BUB) |
 | TT-11 | [Siswa] Cari tutor, profil, slot kosong | Done | ✅ | Katalog asli (`TutorCatalog`), foto tutor, slot 14 hari, `TutorCatalogTest` | Done (BUB) |
 | TT-13 | [Semua role] Dashboard ringkasan & grafik | Done | 🟡 | Siswa: stat + grafik. Tutor/Admin: stat tanpa grafik → ROADMAP 6.1 | In Progress |
-| TT-25 | [Siswa] Menambah/mengubah/menghapus jadwal pelajaran | Done | ❌ | Belum ada; "Ganti jadwal" sesi = isi kartu ini → rencana C | In Progress |
+| TT-25 | [Siswa] Menambah/mengubah/menghapus jadwal pelajaran | Done | ✅ | Ganti jadwal sesi ke slot lain tutor yang sama + batal + bentrok merah, `SessionBookingTest` | Done (BUB) |
 | TT-7 | [Tutor] Menambah slot jadwal | In Progress | ✅ | Slot + kapasitas + mingguan + zona waktu, `TutorSlotTest` | Done (BUB) |
 | TT-8 | [Tutor] Melihat/mengubah/menghapus slot | In Progress | ✅ | Jadwal Saya: tab, filter, ubah/hapus/batalkan, `TutorSlotTest` | Done (BUB) |
 | TT-17 | [Tutor] Unggah/ubah/hapus materi | In Progress | 🟡 | CRUD + tes ada, tetapi materi DRAF tidak muncul di halaman Materi (tak bisa diedit); mapel/jenjang teks (ROADMAP 2.3) | In Progress |
 | TT-10 | [Admin] Lihat, cari, verifikasi siswa | To Do | ✅ | Menu Verifikasi Siswa, `AdminStudentVerificationTest` | Done (BUB) |
-| TT-12 | [Siswa] Ajukan & batalkan sesi | To Do | 🟡 | Ajukan/batal ada (hanya siswa terverifikasi) tetapi ke tutor MOCK, tanpa slot → rencana C | In Progress |
+| TT-12 | [Siswa] Ajukan & batalkan sesi | To Do | ✅ | Pesan slot (kapasitas, atomik, konkuren dites), batal membebaskan kursi | Done (BUB) |
 | TT-15 | [Tutor] Terima/tolak pengajuan sesi | To Do | ❌ | ROADMAP 3.3 | To Do |
 | TT-16 | [Tutor] Presensi, catatan, tandai selesai | To Do | ❌ | Status selesai masih otomatis dari waktu (ROADMAP 3.4) | To Do |
 | TT-18 | [Siswa] Lihat & unduh materi | To Do | ✅ | Lihat, unduh PDF privat, bookmark, progres; ada tes. Gate role route baca = ROADMAP 0.2 | Done |
@@ -219,7 +240,7 @@ Sisa setelah itu (urutan kerja): TT-15 (3.3) → TT-16 (3.4) → TT-19 UI tutor 
 TT-22 (5.4) → TT-13 grafik tutor/admin (6.1). Di luar Jira: ROADMAP 0.2, 0.3, 6.2.
 
 ## Rencana berikutnya (menunggu persetujuan) — slot, katalog, sesi (TT-7, TT-8, TT-11, TT-12, TT-25)
-Disusun 2026-11-25; DISETUJUI pemilik 2026-11-26 (termasuk konversi data lama). Progres: konversi ✅, A ✅, B ✅ (katalog asli; form pengajuan sesi SEMENTARA masih memakai daftar mock sampai C), C ⏳. Catatan A: tampilan jam SESI (bukan slot) dikonversi ke zona pengguna di C.
+Disusun 2026-11-25; DISETUJUI pemilik 2026-11-26 (termasuk konversi data lama). Progres: SEMUA SELESAI 2026-11-26 (konversi ✅, A ✅, B ✅, C ✅). Bagian di bawah dipertahankan sebagai dokumentasi desain.
 Urutan: konversi data lama → A → B → C, masing-masing backup DB, semua tes + build lulus, commit "(belum diuji browser)".
 
 ### Zona waktu (mengikuti laptop pengguna)
@@ -292,11 +313,67 @@ Urutan: konversi data lama → A → B → C, masing-masing backup DB, semua tes
 - SQLite menyimpan datetime sebagai teks tanpa zona; tetap simpan UTC dan set zona koneksi MySQL `+00:00`.
 - UPDATE atomik dengan `CASE` + kondisi `booked_count < capacity` aman di keduanya (MySQL InnoDB mengunci baris).
 - Migrasi `->after()` diabaikan SQLite (kolom ditambah di akhir); tidak masalah di MySQL.
+- `config/database.php` sqlite: `transaction_mode=IMMEDIATE` + `busy_timeout=5000`. PENTING: di PHP < 8.4 Laravel MENGABAIKAN
+  `transaction_mode` (selalu DEFERRED). Karena itu di `SessionBooking`/`TutorSlotController` UPDATE atomik dijadikan pernyataan
+  PERTAMA dalam transaksi dan `DB::transaction(..., 5)` mencoba ulang "database is locked". Di MySQL tidak perlu.
+- Konversi `convert_legacy_session_times_to_utc` khusus data SQLite lokal (sesi lama jam WIB); jangan dijalankan di DB lain.
 - `FileUserProvider`/LocalUserStore (users.json) tidak terkait DB, tetap sama.
 
 ### Menunggu persetujuan pemilik
 1. Konversi data lama: kurangi 7 jam dari `starts_at` sesi lama (saat ini hanya id 2), dengan backup dulu.
 2. Revisi rencana di atas (cookie `tk_tz`, `booked_count` atomik, pratinjau di server, centang "Saya paham" untuk Admin).
+
+## Rencana kerja mandiri (Tahap 2–6) — DISETUJUI pemilik 2026-11-26, lanjutkan di sesi baru
+Pemilik mengizinkan kerja panjang & mandiri TANPA menunggu persetujuan per bagian, selama mengikuti keputusan di sini.
+Berhenti & tanya HANYA bila ada keputusan penting yang tidak tercakup, atau risiko kehilangan/merusak data. Hal kecil:
+ambil pilihan paling sederhana & aman, catat di laporan.
+Aturan tiap bagian: (1) baca kode terkait, tulis rencana singkat di laporan; (2) backup `database/database.sqlite` +
+`storage/app/private/users.json` sebelum migrasi/perubahan data; (3) akses dijaga di SERVER (middleware/route), Aturan no. 11
+berlaku; (4) `php artisan test`, `npm test`, `npm run build` harus lulus — jangan melemahkan/menghapus tes; ubah tes lama hanya
+bila perilaku sengaja berubah, catat alasannya; (5) commit terpisah per bagian, bahasa Indonesia, label "(belum diuji browser)",
+JANGAN push; (6) perbarui CLAUDE.md (ROADMAP, tabel Jira, masalah, daftar cek uji browser); (7) git bundle ke D:\ setelah tiap
+TAHAP; (8) bila percakapan terlalu panjang: berhenti di batas tahap, pastikan CLAUDE.md mutakhir, minta lanjut di sesi baru.
+
+### TAHAP 2: alur sesi sampai selesai
+- TT-15 (ROADMAP 3.3): tutor melihat pengajuan per slot, Terima/Tolak PER SISWA; tolak wajib alasan + kursi bebas
+  (`SlotBooking::releaseSeat`). Saat menerima atau sesudahnya (sebelum mulai) tutor mengisi tautan kelas (Meet/Zoom, validasi
+  URL https). "Masuk Kelas" siswa aktif hanya bila confirmed + tautan ada + ≤ `join_window_minutes` (15) sebelum mulai.
+  Pengajuan tak dijawab sampai waktu mulai → "Kedaluwarsa" (dihitung saat halaman dimuat, tanpa scheduler) + kursi bebas.
+  Notifikasi siswa tiap keputusan. Menu tutor tambah "Sesi Mengajar".
+- TT-16 (ROADMAP 3.4): hanya setelah waktu mulai: presensi per siswa (Hadir/Tidak hadir/Izin), catatan sesi (+ catatan per
+  siswa opsional), "Tandai selesai". HAPUS logika completed otomatis dari waktu (`DashboardController`, `LearningSessionController`,
+  `SessionHistoryData`); sesi lewat yang belum ditandai = "Menunggu konfirmasi tutor". Siswa melihat kehadiran & catatan di Riwayat.
+### TAHAP 3: tugas & materi
+- TT-19 + sisa TT-17: tutor membuat tugas (judul, instruksi, lampiran opsional via `PrivateDocument`, tenggat dengan zona pengguna)
+  HANYA untuk siswa yang punya sesi confirmed/completed dengannya; untuk satu siswa atau semua siswa satu slot. Daftar
+  pengumpulan, unduh jawaban, nilai 0–100 + umpan balik, notifikasi siswa. Perbaiki backend `AssignmentController::create`
+  (tolak siswa tanpa sesi). TT-17: tutor melihat & mengedit draf materinya; mapel/jenjang materi dari katalog (data lama tetap
+  terbaca). Menu tutor tambah "Tugas & Penilaian".
+### TAHAP 4: ulasan
+- TT-21 (5.3): hanya sesi completed dengan siswa tercatat Hadir; satu ulasan per sesi: rating 1–5 + komentar opsional ≤500;
+  bisa diubah dalam 7 hari.
+- TT-22 (5.4): tutor melihat ulasan tentang dirinya (nama siswa = nama depan saja). Admin melihat semua ulasan (cari, filter),
+  sembunyikan/tampilkan dengan alasan wajib + log audit. Rata-rata & jumlah di katalog hanya dari ulasan tidak tersembunyi;
+  "Belum ada ulasan" bila kosong (ganti teks statis di `tutor-catalog.blade.php`).
+### TAHAP 5: dashboard & keamanan
+- TT-13 (6.1): grafik per role dengan data asli, gaya grafik yang ada (tanpa library baru). Admin: pengguna per role,
+  verifikasi menunggu, sesi per minggu. Tutor: sesi per minggu, kehadiran, tugas belum dinilai, rating rata-rata. Siswa: tetap,
+  disesuaikan data sesi baru.
+- 0.2: pindahkan semua `abort_unless` role di controller ke middleware route + tes diizinkan/ditolak per role.
+- 0.3: pesan error login sama untuk akun tidak ada & password salah; rate limit 5/menit per kontak+IP; tes.
+### TAHAP 6: e2e & bersih-bersih
+- Playwright (devDependency, `npm run test:e2e`): (1) daftar tutor → verifikasi admin; (2) siswa lengkapi profil → verifikasi;
+  (3) tutor buat slot → siswa pesan → tutor terima → presensi → selesai → ulasan; (4) menu per role + logout.
+  WAJIB DB & users.json SEMENTARA terpisah (mis. `.env.e2e`, sqlite sementara, `AUTH_USERS_FILE`); JANGAN PERNAH menyentuh
+  `database/database.sqlite` atau `storage/app/private/users.json` asli — buktikan dengan md5 sebelum/sesudah.
+- 6.2: hapus kode mati (file `[` di root, `welcome.blade.php`, `SubjectsMockData`, `components/subject-card`, sisa
+  `DashboardMockData` tak terpakai termasuk `catalog_tutors`/`tutors` mock, "Test User" di DatabaseSeeder). Landing publik: ganti
+  tutor palsu; statistik asli (tutor aktif, siswa, sesi selesai) + maks. 5 tutor asli yang mencentang opsi baru "Tampilkan profil
+  saya di halaman depan" (default tidak); sembunyikan bagian bila kosong. Tulis ulang README.md (penjelasan, instal, jalankan,
+  akun uji TANPA password, cara tes) dan perbarui FOR INFO.md.
+### Laporan akhir (setelah semua tahap / saat berhenti)
+Tabel commit; hasil `php artisan test`, `npm test`, `npm run test:e2e`, `npm run build`; tabel Jira + usulan pemindahan;
+keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤15 langkah); lokasi git bundle terakhir.
 
 ## Cara kerja setiap langkah ROADMAP
 1. Saat diminta "kerjakan X.Y": baca kode terkait, tunjukkan rencana singkat (file diubah/dibuat, migrasi, route & role, tes, risiko), tunggu persetujuan.
@@ -332,6 +409,11 @@ Urutan: konversi data lama → A → B → C, masing-masing backup DB, semua tes
 - `FOR INFO.md` dan `README.md` usang — ROADMAP 6.2.
 - Riwayat git masih memuat `database/recovery-20261110-115933-users.json` (email + hash); file sudah dihapus dari
   repo tanpa menulis ulang riwayat.
+
+- Notifikasi tutor/siswa memuat jam dalam zona default (Asia/Jakarta, WIB) karena dibuat di server tanpa zona penerima.
+- `DashboardMockData` masih berisi `catalog_tutors`/`tutors` mock (tidak dipakai; ditimpa data asli) — hapus di 6.2.
+- Sesi yang dipindah (ganti jadwal) kembali `pending` sampai alur terima/tolak (3.3) ada.
+- Status `completed` masih otomatis dari waktu sampai TT-16 (3.4).
 
 ## ATURAN WAJIB
 1. Jangan pernah membuang perubahan yang belum di-commit. Dilarang `git checkout -- .`, `git reset --hard`,
