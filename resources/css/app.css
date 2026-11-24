@@ -1935,3 +1935,17 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .verification-page .button-primary:hover, .role-dialog .button-primary:hover { background: #0e55bf; }
 .verification-page .button-primary:disabled, .role-dialog .button-primary:disabled { background: #a9c3ea; box-shadow: none; cursor: not-allowed; }
 .verification-page .tutor-review-actions .button { min-width: 110px; }
+
+/* Halaman admin: tab + cari + filter (verifikasi tutor, tutor terverifikasi, verifikasi siswa) */
+.admin-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; border: 1px solid var(--tk-border); border-radius: 14px; background: #f5f8fd; justify-self: start; }
+.admin-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 0; border-radius: 10px; background: transparent; color: #4b5b70; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.admin-tabs button span { padding: 1px 8px; border-radius: 999px; background: #e3ebf7; font-size: 11px; }
+.admin-tabs button.is-active { background: #fff; color: var(--tk-blue); box-shadow: 0 2px 6px rgb(13 43 94 / 8%); }
+.admin-tab-panel { display: grid; gap: 4px; }
+.admin-list { display: grid; gap: 4px; }
+.admin-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.admin-list-search { display: flex; flex: 1 1 260px; max-width: 420px; height: 42px; align-items: center; gap: 9px; padding: 0 12px; border: 1px solid var(--tk-border); border-radius: 12px; background: #fff; color: #8190a5; }
+.admin-list-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--tk-navy); font: inherit; font-size: 13px; }
+.admin-list-search:focus-within { border-color: #8dbdff; box-shadow: 0 0 0 3px rgb(37 117 229 / 10%); }
+.verification-page .tutor-review-actions input { min-height: 40px; }
+@media (max-width: 600px) { .admin-tabs { justify-self: stretch; } .admin-tabs button { flex: 1 1 auto; justify-content: center; } .admin-list-search { max-width: none; } }

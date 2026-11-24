@@ -262,9 +262,9 @@ class TutorVerificationTest extends TestCase
 
         $html = $this->get('/dashboard')->assertOk()->getContent();
         $page = Str::between($html, 'data-spa-page="tutor-verifications"', '</section>');
-        $this->assertStringContainsString('data-verification-filter="pending"', $page);
-        $this->assertMatchesRegularExpression('/data-verification-filter="pending">Menunggu <span>1<\/span>/', $page);
-        $this->assertMatchesRegularExpression('/data-verification-filter="approved">Disetujui <span>0<\/span>/', $page);
+        $this->assertStringContainsString('data-admin-filter="pending"', $page);
+        $this->assertMatchesRegularExpression('/data-admin-filter="pending">Menunggu <span>1<\/span>/', $page);
+        $this->assertMatchesRegularExpression('/data-admin-filter="approved">Disetujui <span>0<\/span>/', $page);
         $this->assertStringContainsString('Daftar sebagai tutor', $page);
         $this->assertStringContainsString('Universitas Contoh', $page);
         $this->assertStringContainsString('Buka PDF', $page);
@@ -308,7 +308,7 @@ class TutorVerificationTest extends TestCase
         $this->assertDatabaseHas('tutor_application_reviews', ['tutor_application_id' => $application->id, 'action' => 'reject', 'reason' => 'Foto kartu mahasiswa buram.']);
         $this->assertDatabaseHas('user_notifications', ['user_id' => $tutorId, 'title' => 'Pengajuan tutor belum disetujui', 'action_url' => '/dashboard#verification']);
         $this->assertFalse(TutorProfile::query()->where('user_id', $tutorId)->value('is_active'));
-        $this->get('/dashboard')->assertSee('data-verification-filter="rejected">Ditolak <span>1</span>', false);
+        $this->get('/dashboard')->assertSee('data-admin-filter="rejected">Ditolak <span>1</span>', false);
         $this->post('/logout');
 
         $this->login('gusti@example.test');

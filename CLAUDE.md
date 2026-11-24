@@ -104,8 +104,10 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
   kartu privat `tutor-documents/{id}` (route hanya Admin/pemilik, header nosniff + CSP sandbox), halaman admin
   Verifikasi Tutor + filter status, `decide` menerima pemohon siswa/tutor. Status = `tutor_applications.status`
   (`App\Support\TutorVerification`); middleware `tutor.verified` di route tulis materi/tugas. **Belum: pencarian pengajuan.**
-- 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Belum**
-  (`is_active` kini hanya diisi true saat admin menyetujui verifikasi; `updateProfile` tidak lagi memaksanya).
+- 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Selesai, uji browser tertunda**:
+  tab "Tutor Terverifikasi" di halaman Verifikasi Tutor (cari + filter), `AdminTutorController@updateStatus`, log
+  `tutor_status_changes`, middleware `tutor.verified` = terverifikasi DAN aktif, scope `TutorProfile::verified()->active()`
+  untuk katalog. `is_active` hanya berubah lewat persetujuan verifikasi atau aksi admin ini.
 - 1.4 Kelola pengguna (daftar, cari, filter role, detail; nonaktifkan akun = tak bisa login; perbaiki N+1) — **Sebagian** (dialog daftar read-only, N+1).
 
 ### Tahap 2: Tutor
@@ -143,7 +145,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 | TT-3 | Menambah dan mengubah mapel & jenjang (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
 | TT-5 | Melihat, mencari, dan menghapus mapel (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
 | TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | ✅ (2026-11-24, uji browser tertunda) | 1.2 |
-| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | 🟡 setujui/tolak ✅; nonaktifkan belum | 1.2, 1.3 |
+| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | ✅ (2026-11-25, uji browser tertunda) | 1.2, 1.3 |
 | TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ❌ | 5.1 |
 | TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ❌ (hanya daftar read-only) | 1.4, 5.2 |
 | TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |

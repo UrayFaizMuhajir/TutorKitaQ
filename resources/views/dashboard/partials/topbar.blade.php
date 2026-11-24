@@ -8,6 +8,8 @@
                 @if ($tutor_application?->status === 'pending')<p class="profile-application-status is-pending">Pengajuan tutor sedang diperiksa admin.</p>
                 @elseif ($tutor_application?->status === 'rejected')<p class="profile-application-status is-rejected">Pengajuan ditolak: {{ $tutor_application->rejection_reason }}</p><button type="button" data-open-tutor-application><x-icon name="edit" /> Perbaiki & Ajukan Ulang</button>
                 @elseif (! $tutor_application || $tutor_application->status !== 'approved')<button type="button" data-open-tutor-application><x-icon name="graduation-cap" /> Ajukan Menjadi Tutor</button>@endif
+            @elseif ($user['role'] === 'tutor' && ($tutor_verified ?? false) && ! ($tutor_can_manage ?? true))
+                <p class="profile-application-status is-rejected">Akun tutor dinonaktifkan admin</p>
             @elseif ($user['role'] === 'tutor' && ($tutor_verified ?? false))
                 <p class="profile-application-status is-approved">✓ Tutor terverifikasi</p>
             @elseif ($user['role'] === 'tutor')

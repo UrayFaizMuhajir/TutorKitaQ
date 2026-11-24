@@ -14,6 +14,14 @@
     </div>
 </div>
 
+@if (! ($tutor_can_manage ?? true))
+    {{-- ROADMAP 1.3: tutor dinonaktifkan admin — masih bisa membaca, tidak bisa mengelola materi/tugas. --}}
+    <section class="panel role-home-panel" aria-labelledby="tutor-inactive-heading" data-tutor-inactive>
+        <div class="panel-heading"><div><span class="section-kicker">STATUS AKUN TUTOR</span><h2 id="tutor-inactive-heading">Akun dinonaktifkan</h2><p>Status: <span class="verification-badge is-rejected">Nonaktif</span></p></div></div>
+        <p class="verification-alert is-rejected" role="status"><strong>Admin menonaktifkan akun tutormu.</strong>@if ($tutor_deactivation?->reason) Alasan: {{ $tutor_deactivation->reason }}@endif Kamu masih bisa membaca materi, tetapi belum bisa membuat atau mengubah materi dan tugas, dan tidak tampil di katalog tutor.</p>
+    </section>
+@endif
+
 <section class="stats-grid" aria-label="Ringkasan mengajar">
     @foreach ($tutor_home['stats'] as $stat)
         <x-dashboard.stat-card :stat="$stat" />

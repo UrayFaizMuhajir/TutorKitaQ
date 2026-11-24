@@ -35,6 +35,18 @@ final class TutorVerification
         return TutorApplication::query()->where('user_id', $userId)->where('status', 'approved')->exists();
     }
 
+    /** Tutor aktif = tidak sedang dinonaktifkan admin (tutor_profiles.is_active). */
+    public static function isActive(string $userId): bool
+    {
+        return (bool) TutorProfile::query()->where('user_id', $userId)->value('is_active');
+    }
+
+    /** Boleh mengelola materi/tugas: terverifikasi DAN aktif. */
+    public static function canManage(string $userId): bool
+    {
+        return self::isVerified($userId) && self::isActive($userId);
+    }
+
     public static function statusFromApplication(?string $applicationStatus): string
     {
         return match ($applicationStatus) {

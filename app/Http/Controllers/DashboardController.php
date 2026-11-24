@@ -9,6 +9,7 @@ use App\Models\AssignmentSubmission;
 use App\Models\LearningMaterial;
 use App\Models\LearningSession;
 use App\Models\StudentAssignment;
+use App\Models\TutorStatusChange;
 use App\Support\LearningMaterialsDashboardData;
 use App\Support\AssignmentDashboardData;
 use App\Support\NotificationCenterData;
@@ -54,6 +55,10 @@ class DashboardController extends Controller
         $verifiedTutor = $isTutor && TutorVerification::isVerified($userId);
         $navigation = DashboardNavigation::forRole($dashboardData['user']['role'], $verifiedTutor);
         $dashboardData['tutor_verified'] = $verifiedTutor;
+        // ROADMAP 1.3: tutor terverifikasi yang dinonaktifkan admin tetap bisa membaca, tetapi tidak mengelola.
+        $tutorActive = $verifiedTutor && TutorVerification::isActive($userId);
+        $dashboardData['tutor_can_manage'] = $tutorActive;
+        $dashboardData['tutor_deactivation'] = $verifiedTutor && ! $tutorActive ? TutorStatusChange::latestFor($userId) : null;
         $dashboardData['tutor_verification'] = $isTutor && ! $verifiedTutor
             ? TutorVerification::stateFor($userId, $authenticatedUser->avatar_path)
             : null;
@@ -65,6 +70,8 @@ class DashboardController extends Controller
         $dashboardData['pending_tutor_applications'] = collect();
         $dashboardData['admin_tutor_applications'] = collect();
         $dashboardData['admin_tutor_application_counts'] = ['all' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
+        $dashboardData['admin_verified_tutors'] = collect();
+        $dashboardData['admin_verified_tutor_counts'] = ['all' => 0, 'active' => 0, 'inactive' => 0];
         $dashboardData['admin_user_rows'] = collect();
         $dashboardData['pending_tutor_application_count'] = 0;
         if (($authenticatedUser->role ?? 'student') === 'admin') {
@@ -88,6 +95,24 @@ class DashboardController extends Controller
 
                     return $application;
                 });
+            // ROADMAP 1.3: daftar tutor terverifikasi untuk tab "Tutor Terverifikasi" (cari + filter aktif/nonaktif).
+            $statusChanges = TutorStatusChange::query()->orderBy('id')->get()->groupBy('user_id');
+            $dashboardData['admin_verified_tutors'] = TutorProfile::query()->verified()->with('subjects')->orderBy('id')->get()
+                ->map(function (TutorProfile $profile) use ($accounts, $statusChanges): TutorProfile {
+                    $record = $accounts[(string) $profile->user_id] ?? [];
+                    $profile->account_name = $record['name'] ?? 'Tutor';
+                    $profile->account_contact = $record['email'] ?? $record['phone'] ?? $record['contact'] ?? '';
+                    $profile->account_occupation = $record['occupation'] ?? null;
+                    $profile->photo_url = route('dashboard.profile.photo', $profile->user_id);
+                    $profile->latest_status_change = $statusChanges->get((string) $profile->user_id)?->last();
+
+                    return $profile;
+                });
+            $dashboardData['admin_verified_tutor_counts'] = [
+                'all' => $dashboardData['admin_verified_tutors']->count(),
+                'active' => $dashboardData['admin_verified_tutors']->where('is_active', true)->count(),
+                'inactive' => $dashboardData['admin_verified_tutors']->where('is_active', false)->count(),
+            ];
             $pendingApplications = $applications->where('status', 'pending')->values();
             $dashboardData['admin_tutor_applications'] = $applications;
             $dashboardData['admin_tutor_application_counts'] = ['all' => $applications->count()] + collect(['pending', 'approved', 'rejected'])

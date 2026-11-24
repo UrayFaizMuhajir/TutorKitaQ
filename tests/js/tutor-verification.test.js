@@ -51,14 +51,34 @@ const adminHtml = () => shell(
     [['dashboard', 'Beranda'], ['tutor-verifications', 'Verifikasi Tutor'], ['notifications', 'Notifikasi']],
     `<div class="spa-page" data-spa-page="dashboard"><button class="button" type="button" data-page-link="tutor-verifications">Periksa pengajuan</button></div>
      <section class="spa-page" data-spa-page="tutor-verifications" data-admin-verifications hidden>
-        <button type="button" class="" data-verification-filter="all">Semua</button>
-        <button type="button" class="is-active" data-verification-filter="pending">Menunggu</button>
-        <button type="button" class="" data-verification-filter="approved">Disetujui</button>
-        <button type="button" class="" data-verification-filter="rejected">Ditolak</button>
-        <article data-verification-item data-status="pending">A</article>
-        <article data-verification-item data-status="pending">B</article>
-        <article data-verification-item data-status="rejected" hidden>C</article>
-        <p data-verification-empty hidden>Tidak ada pengajuan pada status ini.</p>
+        <nav data-admin-tabs>
+            <button type="button" class="is-active" data-admin-tab="applications">Pengajuan</button>
+            <button type="button" data-admin-tab="tutors">Tutor Terverifikasi</button>
+        </nav>
+        <div data-admin-tab-panel="applications">
+            <div data-admin-list data-default-filter="pending">
+                <input type="search" data-admin-search>
+                <button type="button" class="" data-admin-filter="all">Semua</button>
+                <button type="button" class="is-active" data-admin-filter="pending">Menunggu</button>
+                <button type="button" class="" data-admin-filter="approved">Disetujui</button>
+                <button type="button" class="" data-admin-filter="rejected">Ditolak</button>
+                <article data-admin-item data-status="pending" data-search="ayu universitas indonesia">A</article>
+                <article data-admin-item data-status="pending" data-search="budi itb">B</article>
+                <article data-admin-item data-status="rejected" data-search="citra ugm" hidden>C</article>
+                <p data-admin-empty hidden>Tidak ada pengajuan yang cocok.</p>
+            </div>
+        </div>
+        <div data-admin-tab-panel="tutors" hidden>
+            <div data-admin-list data-default-filter="all">
+                <input type="search" data-admin-search>
+                <button type="button" class="is-active" data-admin-filter="all">Semua</button>
+                <button type="button" data-admin-filter="active">Aktif</button>
+                <button type="button" data-admin-filter="inactive">Nonaktif</button>
+                <article data-admin-item data-status="active" data-search="gusti driver gojek">G</article>
+                <article data-admin-item data-status="inactive" data-search="hana kampus">H</article>
+                <p data-admin-empty hidden>Tidak ada tutor yang cocok.</p>
+            </div>
+        </div>
      </section>
      <section class="spa-page" data-spa-page="notifications" hidden></section>`,
 );
@@ -72,7 +92,7 @@ const load = async (html, script, hash = '') => {
 };
 
 const visiblePage = () => document.querySelector('[data-spa-page]:not([hidden])')?.dataset.spaPage;
-const visibleItems = () => [...document.querySelectorAll('[data-verification-item]')].filter((item) => !item.hidden).map((item) => item.textContent);
+const visibleItems = (panel = 'applications') => [...document.querySelectorAll(`[data-admin-tab-panel="${panel}"] [data-admin-item]`)].filter((item) => !item.hidden).map((item) => item.textContent);
 
 const chooseFile = (input, file) => {
     Object.defineProperty(input, 'files', { configurable: true, value: [file] });
@@ -161,17 +181,60 @@ describe('Dashboard verifikasi tutor', () => {
         expect(visiblePage()).toBe('tutor-verifications');
         expect(visibleItems()).toEqual(['A', 'B']);
 
-        document.querySelector('[data-verification-filter="all"]').click();
+        const applications = document.querySelector('[data-admin-tab-panel="applications"]');
+        applications.querySelector('[data-admin-filter="all"]').click();
         expect(visibleItems()).toEqual(['A', 'B', 'C']);
-        expect(document.querySelector('[data-verification-filter="all"]').getAttribute('aria-selected')).toBe('true');
+        expect(applications.querySelector('[data-admin-filter="all"]').getAttribute('aria-selected')).toBe('true');
 
-        document.querySelector('[data-verification-filter="rejected"]').click();
+        applications.querySelector('[data-admin-filter="rejected"]').click();
         expect(visibleItems()).toEqual(['C']);
-        expect(document.querySelector('[data-verification-empty]').hidden).toBe(true);
+        expect(applications.querySelector('[data-admin-empty]').hidden).toBe(true);
 
-        document.querySelector('[data-verification-filter="approved"]').click();
+        applications.querySelector('[data-admin-filter="approved"]').click();
         expect(visibleItems()).toEqual([]);
-        expect(document.querySelector('[data-verification-empty]').hidden).toBe(false);
+        expect(applications.querySelector('[data-admin-empty]').hidden).toBe(false);
+        expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it('admin: kotak cari menyaring per nama/kampus dan digabung dengan filter status', async () => {
+        await load(adminHtml(), 'dashboard', '#tutor-verifications');
+        const applications = document.querySelector('[data-admin-tab-panel="applications"]');
+        const search = applications.querySelector('[data-admin-search]');
+
+        applications.querySelector('[data-admin-filter="all"]').click();
+        search.value = 'ITB';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(visibleItems()).toEqual(['B']);
+
+        search.value = 'tidak-ada';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(visibleItems()).toEqual([]);
+        expect(applications.querySelector('[data-admin-empty]').hidden).toBe(false);
+
+        search.value = '';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        applications.querySelector('[data-admin-filter="pending"]').click();
+        expect(visibleItems()).toEqual(['A', 'B']);
+    });
+
+    it('admin: tab Tutor Terverifikasi dengan filter aktif/nonaktif dan cari', async () => {
+        await load(adminHtml(), 'dashboard', '#tutor-verifications');
+        document.querySelector('[data-admin-tab="tutors"]').click();
+        const tutors = document.querySelector('[data-admin-tab-panel="tutors"]');
+        expect(tutors.hidden).toBe(false);
+        expect(document.querySelector('[data-admin-tab-panel="applications"]').hidden).toBe(true);
+        expect(visibleItems('tutors')).toEqual(['G', 'H']);
+
+        tutors.querySelector('[data-admin-filter="inactive"]').click();
+        expect(visibleItems('tutors')).toEqual(['H']);
+        tutors.querySelector('[data-admin-filter="all"]').click();
+        const search = tutors.querySelector('[data-admin-search]');
+        search.value = 'gojek';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(visibleItems('tutors')).toEqual(['G']);
+
+        document.querySelector('[data-admin-tab="applications"]').click();
+        expect(tutors.hidden).toBe(true);
         expect(consoleError).not.toHaveBeenCalled();
     });
 

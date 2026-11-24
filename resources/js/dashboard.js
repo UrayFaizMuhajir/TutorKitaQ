@@ -1527,28 +1527,46 @@ if (dashboard) {
     subjectFilter?.addEventListener('change', filterContent);
     levelFilter?.addEventListener('change', filterContent);
 
-    // Verifikasi Tutor (Admin): filter status pengajuan di sisi klien.
-    const adminVerificationPage = document.querySelector('[data-admin-verifications]');
-    if (adminVerificationPage) safeInit('verifikasi tutor', () => {
-        const items = [...adminVerificationPage.querySelectorAll('[data-verification-item]')];
-        const filters = [...adminVerificationPage.querySelectorAll('[data-verification-filter]')];
-        const empty = adminVerificationPage.querySelector('[data-verification-empty]');
-        const applyFilter = (status) => {
+    // Daftar admin (verifikasi tutor, tutor terverifikasi, verifikasi siswa): cari + filter status di sisi klien.
+    document.querySelectorAll('[data-admin-list]').forEach((list) => safeInit('daftar admin', () => {
+        const items = [...list.querySelectorAll('[data-admin-item]')];
+        const filters = [...list.querySelectorAll('[data-admin-filter]')];
+        const search = list.querySelector('[data-admin-search]');
+        const empty = list.querySelector('[data-admin-empty]');
+        let status = filters.find((button) => button.classList.contains('is-active'))?.dataset.adminFilter || list.dataset.defaultFilter || 'all';
+        const render = () => {
+            const query = (search?.value || '').trim().toLocaleLowerCase('id');
             let visible = 0;
             items.forEach((item) => {
-                item.hidden = status !== 'all' && item.dataset.status !== status;
+                const matchesStatus = status === 'all' || item.dataset.status === status;
+                const matchesSearch = !query || (item.dataset.search || '').includes(query);
+                item.hidden = !(matchesStatus && matchesSearch);
                 if (!item.hidden) visible += 1;
             });
             filters.forEach((button) => {
-                const active = button.dataset.verificationFilter === status;
+                const active = button.dataset.adminFilter === status;
                 button.classList.toggle('is-active', active);
                 button.setAttribute('aria-selected', String(active));
             });
             if (empty) empty.hidden = visible > 0;
         };
-        filters.forEach((button) => button.addEventListener('click', () => applyFilter(button.dataset.verificationFilter)));
-        applyFilter(filters.find((button) => button.classList.contains('is-active'))?.dataset.verificationFilter || 'pending');
-    });
+        filters.forEach((button) => button.addEventListener('click', () => { status = button.dataset.adminFilter; render(); }));
+        search?.addEventListener('input', render);
+        render();
+    }));
+    // Tab di halaman admin (mis. Pengajuan | Tutor Terverifikasi).
+    document.querySelectorAll('[data-admin-tabs]').forEach((tabs) => safeInit('tab admin', () => {
+        const page = tabs.closest('[data-spa-page]') || document;
+        const buttons = [...tabs.querySelectorAll('[data-admin-tab]')];
+        buttons.forEach((button) => button.addEventListener('click', () => {
+            buttons.forEach((item) => {
+                const active = item === button;
+                item.classList.toggle('is-active', active);
+                item.setAttribute('aria-selected', String(active));
+            });
+            page.querySelectorAll('[data-admin-tab-panel]').forEach((panel) => { panel.hidden = panel.dataset.adminTabPanel !== button.dataset.adminTab; });
+        }));
+    }));
 
     // Kartu mahasiswa: cek tipe & ukuran di browser (server tetap memvalidasi isi file).
     const studentCardTypes = ['image/jpeg', 'image/png', 'application/pdf'];

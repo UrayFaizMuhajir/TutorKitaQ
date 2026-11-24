@@ -31,4 +31,13 @@ class TutorProfile extends Model
     {
         return $query->whereIn('user_id', TutorApplication::query()->where('status', 'approved')->select('user_id'));
     }
+
+    /**
+     * Tutor aktif (tidak dinonaktifkan admin, ROADMAP 1.3). Katalog tutor asli memakai
+     * `TutorProfile::verified()->active()`.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
 }
