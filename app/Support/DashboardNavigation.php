@@ -62,6 +62,7 @@ final class DashboardNavigation
                 'items' => [
                     self::page('dashboard', 'home', 'Beranda'),
                     self::page('tutor-verifications', 'check', 'Verifikasi Tutor'),
+                    self::page('student-verifications', 'graduation-cap', 'Verifikasi Siswa'),
                     self::action('admin-users', 'users', 'Pengguna'),
                     self::page('notifications', 'bell', 'Notifikasi'),
                 ],

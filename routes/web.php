@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LearningSessionController;
 use App\Http\Controllers\LearningMaterialController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\AdminStudentController;
 use App\Http\Controllers\AdminTutorController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\NotificationController;
@@ -58,6 +59,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard/profile/photo/{userId}', [TutorApplicationController::class, 'photo'])->whereNumber('userId')->name('dashboard.profile.photo');
     Route::post('/dashboard/profile/tutor-application', [TutorApplicationController::class, 'submit'])->middleware('role:student')->name('dashboard.tutor-applications.store');
     Route::post('/dashboard/admin/tutor-applications/{tutorApplication}/decision', [TutorApplicationController::class, 'decide'])->middleware('role:admin')->name('dashboard.admin.tutor-applications.decide');
+    Route::post('/dashboard/admin/student-profiles/{studentProfile}/decision', [AdminStudentController::class, 'decide'])->middleware('role:admin')->name('dashboard.admin.student-profiles.decide');
     Route::post('/dashboard/admin/tutors/{userId}/status', [AdminTutorController::class, 'updateStatus'])->middleware('role:admin')->whereNumber('userId')->name('dashboard.admin.tutors.status');
 
     // Verifikasi tutor yang mendaftar sendiri (halaman "Profil & Verifikasi").

@@ -10,6 +10,7 @@ use App\Models\AssignmentSubmission;
 use App\Models\LearningMaterial;
 use App\Models\LearningSession;
 use App\Models\StudentAssignment;
+use App\Models\StudentProfile;
 use App\Models\TutorStatusChange;
 use App\Support\LearningMaterialsDashboardData;
 use App\Support\AssignmentDashboardData;
@@ -74,6 +75,8 @@ class DashboardController extends Controller
         $dashboardData['admin_tutor_applications'] = collect();
         $dashboardData['admin_tutor_application_counts'] = ['all' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
         $dashboardData['admin_verified_tutors'] = collect();
+        $dashboardData['admin_students'] = collect();
+        $dashboardData['admin_student_counts'] = ['all' => 0, 'pending' => 0, 'rejected' => 0, 'incomplete' => 0, 'verified' => 0];
         $dashboardData['admin_verified_tutor_counts'] = ['all' => 0, 'active' => 0, 'inactive' => 0];
         $dashboardData['admin_user_rows'] = collect();
         $dashboardData['pending_tutor_application_count'] = 0;
@@ -124,6 +127,30 @@ class DashboardController extends Controller
             $dashboardData['pending_tutor_applications'] = $pendingApplications;
             // Role semua akun diambil dengan satu query (sebelumnya satu query per akun).
             $rolesByUser = DB::table('user_roles')->pluck('role', 'user_id');
+            // TT-10 / ROADMAP 5.2: semua akun siswa (termasuk yang belum mengisi profil = Belum lengkap).
+            $studentProfiles = StudentProfile::query()
+                ->with(['gradeLevel', 'reviews' => fn ($query) => $query->orderBy('created_at')->orderBy('id')])
+                ->get()->keyBy(fn (StudentProfile $profile): string => (string) $profile->user_id);
+            $statusOrder = ['pending' => 0, 'rejected' => 1, 'incomplete' => 2, 'verified' => 3];
+            $dashboardData['admin_students'] = $accounts->filter(fn (array $record): bool => ($rolesByUser[(string) ($record['id'] ?? '')] ?? ($record['role'] ?? 'student')) === 'student')
+                ->map(function (array $record) use ($studentProfiles): array {
+                    $profile = $studentProfiles->get((string) ($record['id'] ?? ''));
+
+                    return [
+                        'id' => (string) ($record['id'] ?? ''),
+                        'name' => (string) ($record['name'] ?? 'Siswa'),
+                        'contact' => (string) ($record['email'] ?? $record['phone'] ?? $record['contact'] ?? ''),
+                        'occupation' => $record['occupation'] ?? null,
+                        'profile' => $profile,
+                        'status' => $profile?->status ?? 'incomplete',
+                        'document_url' => $profile?->document_path ? route('dashboard.student-profiles.document', $profile) : null,
+                        'document_is_pdf' => \App\Support\PrivateDocument::isPdf($profile?->document_path),
+                    ];
+                })
+                ->sortBy(fn (array $row): string => ($statusOrder[$row['status']] ?? 9).'-'.($row['profile']?->submitted_at?->timestamp ?? 0))
+                ->values();
+            $dashboardData['admin_student_counts'] = ['all' => $dashboardData['admin_students']->count()] + collect(array_keys($statusOrder))
+                ->mapWithKeys(fn (string $status): array => [$status => $dashboardData['admin_students']->where('status', $status)->count()])->all();
             $dashboardData['admin_user_rows'] = $accounts->values()->map(function (array $record) use ($rolesByUser): array {
                 $role = $rolesByUser[(string) ($record['id'] ?? '')] ?? ($record['role'] ?? 'student');
 
@@ -270,7 +297,11 @@ class DashboardController extends Controller
             : null;
 
         $navigation['items'] = array_map(fn (array $item): array => $item + [
-            'count' => ($item['page'] ?? null) === 'tutor-verifications' ? $dashboardData['pending_tutor_application_count'] : null,
+            'count' => match ($item['page'] ?? null) {
+                'tutor-verifications' => $dashboardData['pending_tutor_application_count'],
+                'student-verifications' => $dashboardData['admin_student_counts']['pending'],
+                default => null,
+            },
         ], $navigation['items']);
         $dashboardData['navigation'] = $navigation;
 

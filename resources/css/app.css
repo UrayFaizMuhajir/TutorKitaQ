@@ -1960,3 +1960,6 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .session-verification-note .button { width: auto; padding-inline: 14px; background: var(--tk-blue); color: #fff; }
 .session-new-button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 600px) { .student-verification-banner .panel-heading { flex-wrap: wrap; } }
+
+/* Verifikasi siswa (Admin) */
+.verification-avatar { display: grid; width: 54px; height: 54px; flex: none; place-items: center; border-radius: 13px; background: #edf5ff; color: var(--tk-blue); font-size: 20px; font-weight: 800; }

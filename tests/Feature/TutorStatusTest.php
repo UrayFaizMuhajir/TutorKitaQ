@@ -53,7 +53,11 @@ class TutorStatusTest extends TestCase
         $this->post(route('dashboard.admin.tutors.status', $tutorId), ['action' => 'deactivate', 'reason' => 'Coba lagi nonaktif.'])->assertStatus(409);
         $this->assertSame([], TutorProfile::query()->verified()->active()->pluck('user_id')->all());
 
-        $page = Str::between($this->get('/dashboard?admin_tab=tutors')->getContent(), 'data-admin-tab-panel="tutors"', '</section>');
+        $adminHtml = $this->get('/dashboard?admin_tab=tutors')->getContent();
+        // Setelah aksi status, admin kembali ke tab Tutor Terverifikasi (dirender terbuka oleh server).
+        $this->assertStringContainsString('data-admin-tab-panel="tutors" >', $adminHtml);
+        $this->assertStringContainsString('data-admin-tab-panel="applications"  hidden', $adminHtml);
+        $page = Str::between($adminHtml, 'data-admin-tab-panel="tutors"', '</section>');
         $this->assertMatchesRegularExpression('/data-admin-filter="inactive">Nonaktif <span>1<\/span>/', $page);
         $this->assertStringContainsString('Dinonaktifkan', $page);
         $this->assertStringContainsString('Laporan materi tidak sesuai.', $page);

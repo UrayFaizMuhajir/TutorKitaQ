@@ -50,6 +50,8 @@ class StudentVerificationTest extends TestCase
         $this->assertStringContainsString('data-session-verification-note', $html);
         $this->assertStringNotContainsString('data-session-create-form', $html);
         $this->assertStringNotContainsString('data-session-dialog-open', $html);
+        $this->assertStringContainsString('Pengajuan sesi dibuka setelah profil siswamu diverifikasi admin.', $html);
+        $this->assertStringNotContainsString('hanya dapat dilakukan oleh akun Siswa', $html);
         $this->assertDatabaseCount('student_profiles', 0);
 
         $this->postJson(route('dashboard.sessions.store'), $this->sessionPayload())->assertForbidden()

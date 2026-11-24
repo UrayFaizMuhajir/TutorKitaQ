@@ -61,12 +61,52 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   Notifikasi (Sesi/Tugas ditambah di 3.3/4.1); aksi Admin hanya di sidebar; TT-25 ditunda.
 - Fitur "daftar sebagai tutor + verifikasi tutor + kolom pekerjaan" dikerjakan dan di-commit 2026-11-24
   ("Daftar sebagai tutor, verifikasi tutor oleh admin, dan kolom pekerjaan (belum diuji browser)").
-  **UJI BROWSER MASIH TERTUNDA** — digabung dengan uji 0.1 (daftar cek gabungan ada di percakapan 2026-11-24).
+  **UJI BROWSER MASIH TERTUNDA** — lihat bagian "Daftar cek uji browser gabungan" di bawah.
   Keputusan pemilik: isian wajib = pendidikan, tahun lulus, bio ≥20, kampus, prodi, mapel, foto, kartu; siswa yang
   mengajukan juga wajib kartu; Verifikasi Tutor = halaman (bukan dialog); tutor terverifikasi boleh ubah profil tanpa
   verifikasi ulang, tetapi kartu terkunci. Backup sebelum migrasi: `database/backup-20261124-092124/`.
-- Langkah berikutnya: setelah uji browser gabungan oke → ROADMAP 0.2 (sisa: route materi baca/tugas siswa/mapel) atau
-  1.2 sisa (pencarian pengajuan) — rencana dulu.
+- 2026-11-25 (semua di-commit, BELUM diuji browser): label peran Indonesia (Siswa/Tutor/Admin); 1.3 nonaktif/aktif tutor;
+  5.1 profil & dokumen siswa + wajib terverifikasi sebelum mengajukan sesi; 5.2 Admin memverifikasi siswa.
+  Backup sebelum migrasi: `database/backup-*-sebelum-1.3/`, `database/backup-*-sebelum-5.1/`. Akun siswa lama (id 1,
+  id 4 `siswa@tutorkita.test`) kini berstatus Belum lengkap → harus melengkapi profil sebelum bisa mengajukan sesi.
+- Langkah berikutnya (urutan Jira): uji browser gabungan → lalu TT-7/TT-8 (ROADMAP 2.2 slot tutor) atau 0.2 sisa — rencana dulu.
+
+## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
+Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
+.gif atau >2 MB. Uji di desktop dan mode HP (DevTools 390px). Setiap langkah: lihat Console, tidak boleh ada error merah.
+A. 0.1 tampilan per role
+  1. admin@: menu Beranda · Verifikasi Tutor · Verifikasi Siswa · Pengguna · Notifikasi; tombol ⌄ kiri bawah membuka menu
+     tepat di atasnya (desktop), Esc/klik luar menutup; di HP ⌄ menutup laci lalu menu muncul kanan atas.
+  2. tutor@ (lama): tetap terverifikasi & aktif: Beranda · Materi · Notifikasi; angka beranda cocok; tambah/edit/hapus materi.
+  3. siswa@: 8 menu (termasuk Profil & Verifikasi); Sesi Belajar: tab "Semua Sesi" berjudul "Semua Sesi"; Lihat Detail sesi.
+  4. Label di bawah nama (topbar, sidebar, menu profil) = Siswa/Tutor/Admin bila Pekerjaan kosong.
+B. Daftar sebagai tutor → verifikasi (TT-4, TT-6)
+  1. /register: default "Saya ingin belajar"; pilih "Saya ingin mengajar" → catatan muncul. Daftar tutor baru.
+  2. Login tutor baru: menu Beranda · Profil & Verifikasi · Notifikasi; `#materials` → Beranda; status Belum lengkap.
+  3. Isi profil (kosong → error), unggah kartu (.gif/>2 MB ditolak di browser), Kirim → Menunggu, form terkunci.
+  4. admin@ → Verifikasi Tutor tab Pengajuan: cari nama/kampus, filter, pratinjau kartu, Tolak (tanpa alasan gagal).
+  5. Tutor: notifikasi + alasan tampil; ganti kartu, Kirim Ulang. Admin Setujui → tutor dapat menu Materi, bisa tambah materi.
+  6. Buka URL kartu sebagai siswa (403) dan saat logout (ke /login).
+  7. Siswa baru ajukan jadi tutor (menu profil): tanpa kartu ditolak; asal di admin "Siswa mengajukan diri".
+C. Pekerjaan: Edit Profil isi "Driver Gojek" → tampil di bawah nama (3 tempat), badge peran tetap; kosongkan → kembali ke
+   peran; 61 karakter ditolak; `<b>tes</b>` tampil sebagai teks; admin melihatnya di Pengguna & Verifikasi Tutor.
+D. 1.3 nonaktif/aktif tutor
+  1. admin@ → Verifikasi Tutor tab Tutor Terverifikasi: cari, filter Aktif/Nonaktif; Nonaktifkan tanpa alasan gagal.
+  2. Nonaktifkan dengan alasan → kembali ke tab ini, badge Nonaktif, perubahan terakhir + alasan tampil.
+  3. Login tutor itu: beranda "Akun dinonaktifkan" + alasan; menu Materi masih bisa dibaca; tombol Tambah/Edit/Hapus hilang.
+  4. Admin Aktifkan kembali (alasan wajib) → tutor bisa kelola materi lagi; notifikasi diterima di kedua aksi.
+E. 5.1 profil siswa (TT-9) — pakai siswa@ atau siswa baru
+  1. Beranda menampilkan kotak "Lengkapi profil untuk mengajukan sesi"; di Sesi Belajar tombol "Ajukan Sesi Baru" nonaktif +
+     penjelasan + tombol ke Profil & Verifikasi; dialog pengajuan tidak bisa dibuka.
+  2. Materi, Mata Pelajaranku, Tugas tetap bisa dipakai.
+  3. Profil: kosong → error; kontak wali tidak valid → error; Kecamatan/Kota >100 karakter ditolak; simpan → langkah 1 ✓.
+  4. Dokumen: pilih jenis, .gif/>2 MB ditolak; unggah → pratinjau; Kirim → Menunggu, form terkunci.
+F. 5.2 Verifikasi Siswa (TT-10) — admin@
+  1. Menu Verifikasi Siswa berangka; daftar semua siswa termasuk "Belum lengkap"; cari nama/kontak/sekolah; filter status.
+  2. Detail wali/kontak/kecamatan + pratinjau dokumen; Tolak (alasan wajib) → siswa lihat alasan, perbaiki, Kirim Ulang.
+  3. Setujui → siswa dapat notifikasi; tombol Ajukan Sesi aktif dan pengajuan sesi berhasil; profil masih bisa diubah,
+     bagian dokumen hilang (terkunci).
+  4. PRIVASI: login sebagai tutor → tidak ada data wali/kecamatan/dokumen siswa di halaman mana pun; URL dokumen siswa → 403.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -103,7 +143,8 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
   daftar sebagai tutor (`account_type` student|tutor), halaman Profil & Verifikasi (`TutorVerificationController`),
   kartu privat `tutor-documents/{id}` (route hanya Admin/pemilik, header nosniff + CSP sandbox), halaman admin
   Verifikasi Tutor + filter status, `decide` menerima pemohon siswa/tutor. Status = `tutor_applications.status`
-  (`App\Support\TutorVerification`); middleware `tutor.verified` di route tulis materi/tugas. **Belum: pencarian pengajuan.**
+  (`App\Support\TutorVerification`); middleware `tutor.verified` di route tulis materi/tugas. Pencarian pengajuan
+  ditambahkan 2026-11-25 (cari di sisi klien, `data-admin-list`).
 - 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Selesai, uji browser tertunda**:
   tab "Tutor Terverifikasi" di halaman Verifikasi Tutor (cari + filter), `AdminTutorController@updateStatus`, log
   `tutor_status_changes`, middleware `tutor.verified` = terverifikasi DAN aktif, scope `TutorProfile::verified()->active()`
@@ -133,7 +174,10 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
   tanpa verifikasi ulang, dokumen terkunci; isian "Kecamatan / Kota" (maks. 100), BUKAN alamat rumah.
   Tabel `student_profiles` + `student_verification_reviews`; `App\Support\StudentVerification`, `StudentVerificationController`,
   dokumen privat `student-documents/{id}` lewat `App\Support\PrivateDocument` (pola sama dengan kartu mahasiswa).
-- 5.2 Admin memverifikasi siswa — **Belum**.
+- 5.2 Admin memverifikasi siswa — **Selesai, uji browser tertunda** (2026-11-25): menu Admin "Verifikasi Siswa" (semua akun
+  siswa termasuk Belum lengkap; cari nama/kontak/sekolah; filter; detail; pratinjau dokumen aman; Setujui/Tolak + alasan;
+  notifikasi; log `student_verification_reviews`), `AdminStudentController@decide`. Partial bersama:
+  `dashboard/partials/{admin-list-tools,document-preview,decision-forms}`; JS `[data-admin-list]` (cari klien).
 - 5.3 Rating & ulasan (hanya sesi selesai dari 3.4, satu per sesi) — **Belum**.
 - 5.4 Tutor lihat ulasan; Admin sembunyikan/tampilkan + alasan; rating katalog dari ulasan tak tersembunyi — **Belum**.
 
@@ -152,7 +196,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 | TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | ✅ (2026-11-24, uji browser tertunda) | 1.2 |
 | TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | ✅ (2026-11-25, uji browser tertunda) | 1.2, 1.3 |
 | TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ✅ (2026-11-25, uji browser tertunda) | 5.1 |
-| TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ❌ (hanya daftar read-only) | 1.4, 5.2 |
+| TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ✅ (2026-11-25, uji browser tertunda) | 5.2 |
 | TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |
 | TT-8 | [Tutor] Melihat, mengubah, dan menghapus slot jadwal | In Progress | ❌ | 2.2 |
 | TT-11 | [Siswa] Mencari tutor serta melihat profil dan slot kosong | Done | 🟡 UI dengan data mock | 3.1 |

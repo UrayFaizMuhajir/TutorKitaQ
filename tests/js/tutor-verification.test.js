@@ -268,6 +268,40 @@ describe('Dashboard verifikasi tutor', () => {
         expect(consoleError).not.toHaveBeenCalled();
     });
 
+    it('admin: halaman Verifikasi Siswa memfilter status (termasuk Belum lengkap) dan mencari per sekolah', async () => {
+        const html = shell(
+            [['dashboard', 'Beranda'], ['student-verifications', 'Verifikasi Siswa']],
+            `<div class="spa-page" data-spa-page="dashboard"></div>
+             <section class="spa-page" data-spa-page="student-verifications" data-admin-student-verifications hidden>
+                <div data-admin-list data-default-filter="pending">
+                    <input type="search" data-admin-search>
+                    <button type="button" data-admin-filter="all">Semua</button>
+                    <button type="button" class="is-active" data-admin-filter="pending">Menunggu</button>
+                    <button type="button" data-admin-filter="incomplete">Belum lengkap</button>
+                    <button type="button" data-admin-filter="verified">Terverifikasi</button>
+                    <article data-admin-item data-status="pending" data-search="budi smp negeri 1">Budi</article>
+                    <article data-admin-item data-status="incomplete" data-search="citra" hidden>Citra</article>
+                    <article data-admin-item data-status="verified" data-search="dina sd harapan" hidden>Dina</article>
+                    <p data-admin-empty hidden>Tidak ada siswa yang cocok.</p>
+                </div>
+             </section>`,
+        );
+        await load(html, 'dashboard', '#student-verifications');
+        const items = () => [...document.querySelectorAll('[data-spa-page="student-verifications"] [data-admin-item]')].filter((item) => !item.hidden).map((item) => item.textContent);
+        expect(visiblePage()).toBe('student-verifications');
+        expect(document.querySelector('[data-page-heading]').textContent).toBe('Verifikasi Siswa');
+        expect(items()).toEqual(['Budi']);
+
+        document.querySelector('[data-admin-filter="incomplete"]').click();
+        expect(items()).toEqual(['Citra']);
+        document.querySelector('[data-admin-filter="all"]').click();
+        const search = document.querySelector('[data-admin-search]');
+        search.value = 'SD Harapan';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(items()).toEqual(['Dina']);
+        expect(consoleError).not.toHaveBeenCalled();
+    });
+
     it('admin: tombol beranda membuka halaman Verifikasi Tutor', async () => {
         await load(adminHtml(), 'dashboard');
         await flush();

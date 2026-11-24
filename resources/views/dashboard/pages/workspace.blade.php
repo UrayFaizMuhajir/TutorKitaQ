@@ -64,7 +64,7 @@
                         <div class="session-actions-block"><span class="session-status status-{{ $session->display_status }}">@if ($session->display_status === 'in_progress')<i></i>@endif{{ $session->status_label }}</span><div class="session-action-buttons"><button class="button button-outline" type="button" data-session-detail> Lihat Detail </button>@if ($session->can_join)<a class="button button-primary" href="{{ $session->meeting_url }}" target="_blank" rel="noopener noreferrer"><x-icon name="video"/> Masuk Kelas</a>@else<button class="button button-primary is-disabled" type="button" disabled title="Tautan kelas akan aktif setelah dibagikan tutor."><x-icon name="video"/> Masuk Kelas</button>@endif</div></div>
                     </article>
                 @endforeach
-                <div class="sessions-empty" data-session-empty @if ($learning_sessions->isNotEmpty()) hidden @endif><span class="spa-icon"><x-icon name="calendar"/></span><h3>Belum ada sesi belajar</h3>@if ($canRequestSessions)<p>Ajukan sesi baru untuk mulai menyusun jadwal belajar dengan tutor.</p><button type="button" class="button button-primary" data-session-dialog-open>＋ Ajukan Sesi Baru</button>@else<p>Pengajuan sesi belajar hanya dapat dilakukan oleh akun Siswa.</p>@endif</div>
+                <div class="sessions-empty" data-session-empty @if ($learning_sessions->isNotEmpty()) hidden @endif><span class="spa-icon"><x-icon name="calendar"/></span><h3>Belum ada sesi belajar</h3>@if ($canRequestSessions)<p>Ajukan sesi baru untuk mulai menyusun jadwal belajar dengan tutor.</p><button type="button" class="button button-primary" data-session-dialog-open>＋ Ajukan Sesi Baru</button>@elseif ($sessionRequestLocked)<p>Pengajuan sesi dibuka setelah profil siswamu diverifikasi admin.</p><button type="button" class="button button-primary" data-page-link="student-verification">Lengkapi Profil &amp; Verifikasi</button>@else<p>Pengajuan sesi belajar hanya dapat dilakukan oleh akun Siswa.</p>@endif</div>
                 <div class="sessions-empty sessions-filter-empty" data-session-filter-empty hidden><span class="spa-icon"><x-icon name="search"/></span><h3>Belum ada sesi pada kategori ini</h3><p>Sesi dengan status tersebut akan muncul di sini.</p></div>
             </div>
         </div>
@@ -276,6 +276,9 @@
 @endif
 @if (in_array('tutor-verifications', $visiblePages, true))
     @include('dashboard.pages.admin-tutor-verifications')
+@endif
+@if (in_array('student-verifications', $visiblePages, true))
+    @include('dashboard.pages.admin-student-verifications')
 @endif
 
 @if (in_array('assignments', $visiblePages, true))
