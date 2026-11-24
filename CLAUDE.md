@@ -47,6 +47,13 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   - Sesi uji `learning_sessions` id 1 milik gudti sudah dihapus (backup: `database/backup-20261118-081652/`).
     Notifikasinya (`user_notifications` key `session:1:pending`) juga dihapus (backup: `database/backup-20261118-083231/`).
   - Alur Siswa teruji di browser: sesi id 2 milik siswa id 4 diajukan lalu dibatalkan (status `cancelled`, sengaja dibiarkan).
+- Audit ulang setelah jeda (2026-11-24, hanya baca):
+  - Git: `main` bersih, 4 commit lokal belum di-push (e7f5090, 62594ce, f6ba5d1, 1058b51); `origin/main` tidak punya
+    commit baru. Tidak ada perubahan kode sejak 1058b51.
+  - Tes: `php artisan test` 49 lulus (501 asersi); `npm test` 6 lulus.
+  - 34 route dan 11 migrasi (semua Ran) sama dengan audit 2026-11-16; status ROADMAP di bawah masih berlaku.
+    Semua butir "Masalah yang diketahui" masih terbukti di kode.
+  - Daftar kartu Jira Sprint 1 dicatat di bagian "Kartu Jira" di bawah, beserta status menurut kode.
 - Langkah berikutnya: ROADMAP 0.1 (tunjukkan rencana dulu, tunggu persetujuan).
 
 ## Arsitektur
@@ -108,7 +115,32 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 - 6.1 Dashboard ringkasan & grafik per role dengan data asli — **Sebagian** (siswa saja).
 - 6.2 Bersih-bersih kode mati, DatabaseSeeder "Test User", README.md, FOR INFO.md — **Belum**.
 
-Kartu Jira yang diabaikan dulu: TT-14, TT-23, TT-24, TT-25.
+## Kartu Jira (TT Sprint 1; status Jira per 2026-11-24, status kode per audit 2026-11-24)
+Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tidak ada di board — abaikan.
+
+| Kartu | Judul | Jira | Kode | ROADMAP |
+|---|---|---|---|---|
+| TT-2 | Fitur login dan logout | Done | ✅ (keamanan di 0.3) | 0.3 |
+| TT-3 | Menambah dan mengubah mapel & jenjang (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
+| TT-5 | Melihat, mencari, dan menghapus mapel (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
+| TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | 🟡 tanpa kartu mahasiswa | 1.2, 2.1 |
+| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | 🟡 tanpa nonaktifkan | 1.2, 1.3 |
+| TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ❌ | 5.1 |
+| TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ❌ (hanya daftar read-only) | 1.4, 5.2 |
+| TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |
+| TT-8 | [Tutor] Melihat, mengubah, dan menghapus slot jadwal | In Progress | ❌ | 2.2 |
+| TT-11 | [Siswa] Mencari tutor serta melihat profil dan slot kosong | Done | 🟡 UI dengan data mock | 3.1 |
+| TT-12 | [Siswa] Mengajukan dan membatalkan pengajuan sesi | To Do | 🟡 ke tutor mock | 3.2 |
+| TT-15 | [Tutor] Menerima atau menolak pengajuan sesi | To Do | ❌ | 3.3 |
+| TT-16 | [Tutor] Presensi & catatan, menandai sesi selesai | To Do | ❌ | 3.4 |
+| TT-17 | [Tutor] Mengunggah, mengubah, dan menghapus materi | In Progress | 🟡 CRUD ada; draf tak terlihat, mapel teks | 2.3 |
+| TT-18 | [Siswa] Melihat dan mengunduh materi | To Do | 🟡 berfungsi, tanpa gate role | 4.3 |
+| TT-19 | [Tutor] Membuat tugas dan menilai pengumpulan | To Do | 🟡 backend saja | 4.1 |
+| TT-20 | [Siswa] Mengumpulkan tugas dan melihat nilai | To Do | 🟡 sebagian besar ada | 4.2 |
+| TT-21 | [Siswa] Rating dan ulasan untuk sesi selesai | To Do | ❌ | 5.3 |
+| TT-22 | [Tutor/Admin] Melihat ulasan, menyembunyikan ulasan | To Do | ❌ | 5.4 |
+| TT-13 | [Semua role] Dashboard ringkasan dan grafik | Done | 🟡 siswa saja | 6.1 (+0.1) |
+| TT-25 | [Siswa] Menambah, mengubah, menghapus jadwal pelajaran | Done | ❌ (jadwal hanya dari `learning_sessions`) | belum ada; tanyakan maksudnya |
 
 ## Cara kerja setiap langkah ROADMAP
 1. Saat diminta "kerjakan X.Y": baca kode terkait, tunjukkan rencana singkat (file diubah/dibuat, migrasi, route & role, tes, risiko), tunggu persetujuan.
