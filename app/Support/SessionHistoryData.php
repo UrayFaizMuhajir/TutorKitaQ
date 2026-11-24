@@ -16,7 +16,7 @@ class SessionHistoryData
         $total = $history->count();
         $completed = $history->where('display_status', 'completed')->count();
         $inProgress = $history->where('display_status', 'in_progress')->count();
-        $cancelled = $history->where('display_status', 'cancelled')->count();
+        $cancelled = $history->whereIn('display_status', LearningSession::CLOSED_STATUSES)->count(); // dibatalkan/ditolak/kedaluwarsa
 
         $favorites = $history->groupBy('tutor_name')->map(function (Collection $tutorSessions): array {
             /** @var LearningSession $sample */

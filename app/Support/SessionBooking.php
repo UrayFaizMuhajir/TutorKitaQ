@@ -90,7 +90,7 @@ final class SessionBooking
                 if (LearningSession::query()->active()->where('slot_id', $slot->id)->where('student_id', $session->student_id)->exists()) {
                     throw new HttpException(409, 'Kamu sudah terdaftar di slot itu.');
                 }
-                // Waktu baru perlu dijawab tutor lagi (terima/tolak menyusul di ROADMAP 3.3).
+                // Waktu baru perlu dijawab tutor lagi (Sesi Mengajar, TT-15): status kembali pending.
                 $moved = LearningSession::query()->whereKey($session->id)->where('slot_id', $session->slot_id)
                     ->whereIn('status', LearningSession::ACTIVE_STATUSES)->where('starts_at', '>', now()->utc()->format('Y-m-d H:i:s'))
                     ->update(['slot_id' => $slot->id, 'starts_at' => $slot->starts_at->format('Y-m-d H:i:s'), 'duration_minutes' => $slot->durationMinutes(), 'status' => 'pending', 'updated_at' => now()]);

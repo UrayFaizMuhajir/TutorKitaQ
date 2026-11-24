@@ -30,6 +30,8 @@ class DashboardController extends Controller
     public function __invoke(LocalUserStore $users): View
     {
         $authenticatedUser = Auth::user();
+        // TT-15: pengajuan yang tak dijawab sampai waktu mulai menjadi "Kedaluwarsa" (tanpa scheduler).
+        \App\Support\SessionDecision::expireStale();
         $fullName = (string) $authenticatedUser->name;
         $nameParts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $initials = mb_strtoupper(implode('', array_map(
@@ -183,25 +185,10 @@ class DashboardController extends Controller
         $dashboardData['learning_sessions'] = $studentSessions
             ->map(function (LearningSession $session) use ($now, $conflictMap): LearningSession {
                 $endsAt = $session->endsAt();
-                $status = $session->status;
-                if ($status === 'confirmed' && $now->between($session->starts_at, $endsAt)) {
-                    $status = 'in_progress';
-                } elseif ($status === 'confirmed' && $now->greaterThan($endsAt)) {
-                    $status = 'completed';
-                }
-                $meetingUrl = $session->meeting_url;
-                $hasRealMeetingUrl = is_string($meetingUrl)
-                    && filter_var($meetingUrl, FILTER_VALIDATE_URL)
-                    && in_array(parse_url($meetingUrl, PHP_URL_SCHEME), ['http', 'https'], true);
+                $status = $session->displayStatus($now);
 
                 $session->display_status = $status;
-                $session->status_label = [
-                    'pending' => 'Menunggu Konfirmasi',
-                    'confirmed' => 'Terkonfirmasi',
-                    'in_progress' => 'Sedang Berlangsung',
-                    'completed' => 'Selesai',
-                    'cancelled' => 'Dibatalkan',
-                ][$status] ?? 'Menunggu Konfirmasi';
+                $session->status_label = LearningSession::STATUS_LABELS[$status] ?? LearningSession::STATUS_LABELS['pending'];
                 $session->local_starts_at = \App\Support\UserTime::local($session->starts_at);
                 $session->date_label = \App\Support\UserTime::dateLong($session->starts_at);
                 $session->short_date_label = $session->local_starts_at->locale('id')->isoFormat('ddd, D MMM YYYY');
@@ -210,10 +197,16 @@ class DashboardController extends Controller
                     static fn (string $part): string => mb_substr($part, 0, 1),
                     array_slice(preg_split('/\s+/', trim($session->tutor_name), -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 2),
                 )));
-                $session->can_join = in_array($status, ['confirmed', 'in_progress'], true)
-                    && $hasRealMeetingUrl
-                    && $now->between($session->starts_at->subMinutes((int) config('tutorkita.join_window_minutes')), $endsAt);
-                $session->meeting_url = $hasRealMeetingUrl ? $meetingUrl : null;
+                // TT-15: "Masuk Kelas" hanya bila confirmed + tautan https ada + ≤ join_window_minutes sebelum mulai.
+                $session->can_join = $session->canJoin($now);
+                $session->join_hint = match (true) {
+                    $session->can_join => null,
+                    $session->status === 'pending' => 'Menunggu tutor menerima pengajuan.',
+                    $session->status === 'confirmed' && ! $session->meetingLink() => 'Tautan kelas akan dibagikan tutor.',
+                    $session->status === 'confirmed' && $now->lessThan($endsAt) => 'Tombol aktif '.config('tutorkita.join_window_minutes').' menit sebelum sesi dimulai.',
+                    default => 'Sesi ini tidak bisa dimasuki.',
+                };
+                $session->meeting_url = $session->meetingLink();
                 $conflicts = $conflictMap[$session->id] ?? [];
                 $session->has_conflict = $conflicts !== [];
                 $session->conflict_label = collect($conflicts)->map(fn (LearningSession $other): string => $other->subject.', '.\App\Support\UserTime::slotLabel($other->starts_at, $other->endsAt()))->join('; ');
@@ -223,11 +216,11 @@ class DashboardController extends Controller
             });
 
         $dashboardData['today_sessions'] = $dashboardData['learning_sessions']
-            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->isSameDay($localNow) && $session->display_status !== 'cancelled');
+            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->isSameDay($localNow) && ! in_array($session->display_status, LearningSession::CLOSED_STATUSES, true));
         $weekStart = $localNow->startOfWeek();
         $weekEnd = $localNow->endOfWeek();
         $dashboardData['week_sessions'] = $dashboardData['learning_sessions']
-            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->betweenIncluded($weekStart, $weekEnd) && $session->display_status !== 'cancelled')
+            ->filter(fn (LearningSession $session): bool => $session->local_starts_at->betweenIncluded($weekStart, $weekEnd) && ! in_array($session->display_status, LearningSession::CLOSED_STATUSES, true))
             ->take(4);
         // Form pengajuan sesi berbasis slot: hanya tutor katalog yang punya slot kosong.
         $dashboardData['booking_tutors'] = $dashboardData['catalog_tutors']->filter(fn (array $tutor): bool => $tutor['slots'] !== [])->values();
@@ -254,7 +247,7 @@ class DashboardController extends Controller
 
         $dashboardData['schedules'] = $dashboardData['learning_sessions']
             ->filter(fn (LearningSession $session): bool => $session->local_starts_at->greaterThanOrEqualTo($localNow->startOfDay())
-                && ! in_array($session->display_status, ['cancelled', 'completed'], true))
+                && ! in_array($session->display_status, [...LearningSession::CLOSED_STATUSES, 'completed'], true))
             ->map(function (LearningSession $session) use ($localNow): array {
                 $isToday = $session->local_starts_at->isSameDay($localNow);
                 $dateLabel = $isToday
@@ -316,6 +309,7 @@ class DashboardController extends Controller
         $dashboardData = array_replace($dashboardData, NotificationCenterData::make($authenticatedUser));
 
         $dashboardData['tutor_slots'] = $navigation['home'] === 'tutor' ? $this->tutorSlots($userId, $users) : collect();
+        $dashboardData['tutor_teaching'] = $navigation['home'] === 'tutor' ? $this->tutorTeaching($userId, $users) : null;
         $dashboardData['tutor_home'] = $navigation['home'] === 'tutor'
             ? $this->tutorHome((string) $authenticatedUser->getAuthIdentifier())
             : null;
@@ -327,6 +321,7 @@ class DashboardController extends Controller
             'count' => match ($item['page'] ?? null) {
                 'tutor-verifications' => $dashboardData['pending_tutor_application_count'],
                 'student-verifications' => $dashboardData['admin_student_counts']['pending'],
+                'teaching' => $dashboardData['tutor_teaching']['pending_count'] ?? null,
                 default => null,
             },
         ], $navigation['items']);
@@ -366,6 +361,63 @@ class DashboardController extends Controller
 
                 return $slot;
             });
+    }
+
+    /**
+     * "Sesi Mengajar" (TT-15): sesi milik tutor dikelompokkan per slot dalam tiga tab — Pengajuan (pending mendatang),
+     * Mendatang (confirmed belum selesai), Riwayat (sisanya). PRIVASI (Aturan no. 11): per siswa hanya nama + data sesi.
+     *
+     * @return array{tabs: array<string, list<array<string, mixed>>>, counts: array<string, int>, pending_count: int}
+     */
+    private function tutorTeaching(string $tutorId, LocalUserStore $users): array
+    {
+        $names = collect($users->all())->mapWithKeys(fn (array $record): array => [(string) ($record['id'] ?? '') => (string) ($record['name'] ?? 'Siswa')]);
+        $now = now();
+        $rows = LearningSession::query()->where('tutor_id', $tutorId)->with('slot')->orderBy('starts_at')->orderBy('id')->get()
+            ->map(function (LearningSession $session) use ($names, $now): array {
+                $status = $session->displayStatus($now);
+                $future = $session->starts_at->greaterThan($now);
+                $tab = match (true) {
+                    $session->status === 'pending' && $future => 'pending',
+                    $session->status === 'confirmed' && $session->endsAt()->greaterThan($now) => 'upcoming',
+                    default => 'history',
+                };
+
+                return [
+                    'tab' => $tab,
+                    'group' => $session->slot_id ? 'slot-'.$session->slot_id : 'session-'.$session->id,
+                    'slot' => $session->slot,
+                    'id' => $session->id,
+                    'starts_at' => $session->starts_at,
+                    'label' => \App\Support\UserTime::slotLabel($session->starts_at, $session->endsAt()),
+                    'student_name' => $names[(string) $session->student_id] ?? 'Siswa',
+                    'subject' => $session->subject,
+                    'topic' => $session->topic,
+                    'grade_level' => $session->grade_level,
+                    'status' => $status,
+                    'status_label' => LearningSession::STATUS_LABELS[$status] ?? $status,
+                    'reason' => $session->status === 'rejected' ? $session->rejection_reason : ($session->status === 'cancelled' ? $session->cancel_reason : null),
+                    'meeting_url' => $session->meetingLink(),
+                    'meeting_platform' => $session->meeting_platform,
+                    'can_decide' => $tab === 'pending',
+                    'can_set_link' => $session->status === 'confirmed' && $future,
+                ];
+            });
+
+        $tabs = [];
+        foreach (['pending', 'upcoming', 'history'] as $tab) {
+            $tabRows = $rows->where('tab', $tab);
+            if ($tab === 'history') $tabRows = $tabRows->sortByDesc(fn (array $row) => $row['starts_at']->getTimestamp());
+            $tabs[$tab] = $tabRows->groupBy('group')->map(fn ($group): array => [
+                'label' => $group->first()['label'],
+                'slot' => $group->first()['slot'],
+                'sessions' => $group->values()->all(),
+                'search' => \Illuminate\Support\Str::lower($group->first()['label'].' '.$group->pluck('student_name')->join(' ').' '.$group->pluck('subject')->join(' ')),
+            ])->values()->all();
+        }
+        $counts = collect($tabs)->map(fn (array $groups): int => (int) collect($groups)->sum(fn (array $group): int => count($group['sessions'])))->all();
+
+        return ['tabs' => $tabs, 'counts' => $counts, 'pending_count' => $counts['pending']];
     }
 
     /** Ringkasan beranda tutor: hanya data milik tutor yang sedang login. */

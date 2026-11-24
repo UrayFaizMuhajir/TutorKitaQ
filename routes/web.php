@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentVerificationController;
 use App\Http\Controllers\SubjectsController;
 use App\Http\Controllers\TutorApplicationController;
+use App\Http\Controllers\TutorSessionController;
 use App\Http\Controllers\TutorSlotController;
 use App\Http\Controllers\TutorVerificationController;
 
@@ -74,6 +75,12 @@ Route::middleware('auth')->group(function (): void {
     });
     // Membatalkan slot (berpemesan) tetap boleh untuk tutor terverifikasi yang dinonaktifkan, agar siswa diberi kabar.
     Route::post('/dashboard/tutor/slots/{slot}/cancel', [TutorSlotController::class, 'cancel'])->middleware('role:tutor')->whereNumber('slot')->name('dashboard.tutor.slots.cancel');
+
+    // Sesi Mengajar (ROADMAP 3.3 · TT-15): menerima butuh tutor terverifikasi + aktif; menolak & tautan kelas cukup
+    // terverifikasi (dicek di controller) agar tutor yang dinonaktifkan tetap bisa memberi kabar ke siswa.
+    Route::post('/dashboard/tutor/sessions/{learningSession}/accept', [TutorSessionController::class, 'accept'])->middleware('tutor.verified')->whereNumber('learningSession')->name('dashboard.tutor.sessions.accept');
+    Route::post('/dashboard/tutor/sessions/{learningSession}/reject', [TutorSessionController::class, 'reject'])->middleware('role:tutor')->whereNumber('learningSession')->name('dashboard.tutor.sessions.reject');
+    Route::post('/dashboard/tutor/sessions/{learningSession}/meeting-link', [TutorSessionController::class, 'meetingLink'])->middleware('role:tutor')->whereNumber('learningSession')->name('dashboard.tutor.sessions.meeting-link');
 
     // Verifikasi tutor yang mendaftar sendiri (halaman "Profil & Verifikasi").
     Route::middleware('role:tutor')->prefix('/dashboard/tutor-verification')->name('dashboard.tutor-verification.')->group(function (): void {

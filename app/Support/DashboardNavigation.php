@@ -51,6 +51,7 @@ final class DashboardNavigation
                 'items' => [
                     self::page('dashboard', 'home', 'Beranda'),
                     self::page('schedule', 'calendar', 'Jadwal Saya'),
+                    self::page('teaching', 'users', 'Sesi Mengajar'),
                     self::page('materials', 'book', 'Materi Pembelajaran'),
                     self::page('notifications', 'bell', 'Notifikasi'),
                 ],

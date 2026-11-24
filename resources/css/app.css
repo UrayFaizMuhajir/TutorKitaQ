@@ -1986,6 +1986,15 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .slot-edit summary { cursor: pointer; color: var(--tk-blue); font-weight: 600; font-size: 13px; }
 .slot-cancel-form { display: flex; flex: 1 1 320px; gap: 8px; }
 .slot-cancel-form input { flex: 1; min-height: 38px; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
+/* Sesi Mengajar (TT-15): satu baris per siswa dengan aksi Terima/Tolak/tautan. */
+.teaching-list li.teaching-row { display: grid; gap: 8px; padding: 10px 12px; }
+.teaching-row-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.teaching-row-head > div { display: grid; gap: 2px; }
+.teaching-row .verification-note a { color: var(--tk-blue); word-break: break-all; }
+.teaching-accept-form { display: flex; flex: 1 1 320px; gap: 8px; }
+.teaching-accept-form input { flex: 1; min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
+.teaching-accept-form .button { width: auto; padding-inline: 14px; }
+@media (max-width: 520px) { .teaching-accept-form, .slot-cancel-form { flex-direction: column; } }
 .tutor-impact-confirm { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .tutor-impact-warning { flex-basis: 100%; }
 .verification-page .tutor-review-actions form[data-tutor-status-form] { flex-wrap: wrap; }

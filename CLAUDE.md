@@ -74,8 +74,10 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). Mulai dari TAHAP 2 (TT-15).
 
 - TAHAP 2 dimulai (tanggal sistem 2026-11-24; tanggal 11-25/26 di atas berasal dari sesi sebelumnya):
-  - Jam notifikasi mengikuti zona pembaca — commit tersendiri (belum diuji browser). Migrasi aditif
+  - Jam notifikasi mengikuti zona pembaca — commit c1d2d1b (belum diuji browser). Migrasi aditif
     `2026_11_27_000001_add_data_to_user_notifications` (kolom `data` JSON nullable). Backup: `database/backup-20261124-133309-sebelum-notif-tz/`.
+  - TT-15 (3.3) selesai — commit tersendiri (belum diuji browser). Migrasi aditif `2026_11_27_000002_add_decision_columns_to_learning_sessions`.
+    Backup: `database/backup-20261124-133954-sebelum-tt15/`. Berikutnya: TT-16 (3.4).
 
 ## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
 Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
@@ -133,6 +135,16 @@ H. Jam notifikasi mengikuti zona pembaca (Tahap 2 awal)
   1. Siswa (WIB) memesan slot tutor → tutor membuka Notifikasi dengan zona Asia/Makassar → "Pengajuan sesi baru" berjam WITA;
      ganti zona ke Jakarta, muat ulang 2× → notifikasi yang sama berjam WIB. Jam terima (kanan) & grup "Hari Ini" ikut zona.
   2. Notifikasi lama (dibuat sebelum 2026-11-24) tetap tampil dengan teks lamanya.
+I. TT-15 Sesi Mengajar (3.3)
+  1. Dua siswa terverifikasi memesan slot tutor@ yang sama → tutor@: menu "Sesi Mengajar" berangka 2; tab Pengajuan menampilkan
+     satu kartu slot dengan dua baris siswa (nama, mapel, jenjang, topik — TANPA data wali/sekolah).
+  2. Terima siswa A dengan tautan `http://…` → error merah di halaman; dengan `https://meet.google.com/…` → pindah ke tab Mendatang.
+  3. Tolak siswa B tanpa alasan → ditolak browser/server; dengan alasan → Riwayat "Ditolak Tutor"; Jadwal Saya: Terisi turun.
+  4. Siswa B: notifikasi + alasan; Sesi Belajar tab "Sesi Dibatalkan" menampilkan sesi Ditolak; Lihat Detail → Alasan penolakan.
+  5. Siswa A: tombol Masuk Kelas nonaktif (hover: "Tombol aktif 15 menit sebelum…"); 15 menit sebelum mulai → aktif, membuka tautan.
+  6. Terima tanpa tautan → baris Mendatang punya kolom "Simpan tautan"; siswa mendapat notifikasi "Tautan kelas tersedia".
+  7. Pengajuan yang dibiarkan sampai jam mulai → setelah muat ulang: "Kedaluwarsa", kursi kosong, siswa dapat notifikasi.
+  8. Admin menonaktifkan tutor@ → halaman Sesi Mengajar: tombol Terima hilang, Tolak tetap ada.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -188,7 +200,13 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
   bentrok ditandai), `LearningSessionController` (store/show/cancel/reschedule), form slot (tutor→slot→mapel→jenjang) + peringatan
   bentrok merah + "Pilih slot ini" dari katalog, label Bentrok di kartu/jadwal/beranda, notifikasi tutor & siswa. Tes konkuren
   proses paralel `SessionBookingTest::test_parallel_processes_cannot_overbook_a_slot` (skrip `tests/Support/concurrent-booking.php`).
-- 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Belum**.
+- 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Selesai (BUB), 2026-11-24**: halaman tutor "Sesi Mengajar"
+  (`teaching`, badge jumlah pengajuan; tab Pengajuan/Mendatang/Riwayat, dikelompokkan per slot, aksi PER SISWA),
+  `TutorSessionController` + `App\Support\SessionDecision` (terima: `tutor.verified`; tolak/tautan: `role:tutor` + terverifikasi,
+  error bag `teaching`). Status baru `rejected` (+ `rejection_reason`, `decided_at`) & `expired` (dihitung `expireStale()` di awal
+  `DashboardController`, tanpa scheduler; kursi dilepas). Tautan kelas `url:https`, platform dari host. "Masuk Kelas" =
+  `LearningSession::canJoin()`; JSON detail hanya mengirim tautan saat tombol aktif. `LearningSession::{displayStatus,
+  STATUS_LABELS, CLOSED_STATUSES}` dipakai bersama. Tes `TutorSessionDecisionTest`.
 - 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
 
 ### Tahap 4: Tugas & materi untuk siswa
@@ -233,7 +251,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. "(BUB)" = belum diuji b
 | TT-17 | [Tutor] Unggah/ubah/hapus materi | In Progress | 🟡 | CRUD + tes ada, tetapi materi DRAF tidak muncul di halaman Materi (tak bisa diedit); mapel/jenjang teks (ROADMAP 2.3) | In Progress |
 | TT-10 | [Admin] Lihat, cari, verifikasi siswa | To Do | ✅ | Menu Verifikasi Siswa, `AdminStudentVerificationTest` | Done (BUB) |
 | TT-12 | [Siswa] Ajukan & batalkan sesi | To Do | ✅ | Pesan slot (kapasitas, atomik, konkuren dites), batal membebaskan kursi | Done (BUB) |
-| TT-15 | [Tutor] Terima/tolak pengajuan sesi | To Do | ❌ | ROADMAP 3.3 | To Do |
+| TT-15 | [Tutor] Terima/tolak pengajuan sesi | To Do | ✅ | Sesi Mengajar: terima/tolak per siswa, alasan, tautan https, kedaluwarsa, `TutorSessionDecisionTest` | Done (BUB) |
 | TT-16 | [Tutor] Presensi, catatan, tandai selesai | To Do | ❌ | Status selesai masih otomatis dari waktu (ROADMAP 3.4) | To Do |
 | TT-18 | [Siswa] Lihat & unduh materi | To Do | ✅ | Lihat, unduh PDF privat, bookmark, progres; ada tes. Gate role route baca = ROADMAP 0.2 | Done |
 | TT-19 | [Tutor] Buat tugas & menilai | To Do | 🟡 | Backend `create`/`grade` + tes; BELUM ada UI tutor; student_id bebas (ROADMAP 4.1) | In Progress |
@@ -425,7 +443,9 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
   `UserNotification::displayBody()` di zona pembaca; `body` = teks cadangan zona default. Notifikasi lama (data NULL, 4 baris
   lokal per 2026-11-24) tampil apa adanya.
 - `DashboardMockData` masih berisi `catalog_tutors`/`tutors` mock (tidak dipakai; ditimpa data asli) — hapus di 6.2.
-- Sesi yang dipindah (ganti jadwal) kembali `pending` sampai alur terima/tolak (3.3) ada.
+- Sesi yang dipindah (ganti jadwal) kembali `pending` dan harus diterima tutor lagi; tautan kelas lama tetap tersimpan.
+- Notifikasi otomatis `NotificationCenterData::syncActivity` untuk sesi berbasis slot kini hanya pending/completed; keputusan,
+  pembatalan tutor, dan kedaluwarsa dikirim langsung (`SessionDecision`, `TutorSlotController`).
 - Status `completed` masih otomatis dari waktu sampai TT-16 (3.4).
 
 ## ATURAN WAJIB

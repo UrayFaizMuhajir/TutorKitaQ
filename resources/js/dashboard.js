@@ -26,7 +26,7 @@ if (dashboard) {
     const levelFilter = document.querySelector('#subject-level-filter');
     // Judul halaman diambil dari menu sidebar yang dirender server (App\Support\DashboardNavigation);
     // daftar di bawah hanya cadangan bila atribut judul tidak ada.
-    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor', 'student-verification': 'Profil & Verifikasi', 'student-verifications': 'Verifikasi Siswa', schedule: 'Jadwal Saya' };
+    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor', 'student-verification': 'Profil & Verifikasi', 'student-verifications': 'Verifikasi Siswa', schedule: 'Jadwal Saya', teaching: 'Sesi Mengajar' };
     document.querySelectorAll('[data-sidebar-nav] [data-page-link][data-page-title]').forEach((link) => { pageTitles[link.dataset.pageLink] = link.dataset.pageTitle; });
     // Halaman yang tidak ada di menu role tidak dirender, jadi tautan/hash ke sana dialihkan ke Beranda.
     const isAvailablePage = (page) => Boolean(pageTitles[page]) && Boolean(document.querySelector(`[data-spa-page="${page}"]`));
@@ -1131,7 +1131,7 @@ if (dashboard) {
         all: ['Semua Sesi', 'Semua sesi belajarmu: mendatang, selesai, dan dibatalkan.'],
         upcoming: ['Sesi Mendatang', 'Jadwal sesi belajar yang sudah dikonfirmasi atau menunggu konfirmasi.'],
         completed: ['Sesi Selesai', 'Lihat kembali sesi belajar yang sudah kamu jalani.'],
-        cancelled: ['Sesi Dibatalkan', 'Riwayat sesi yang dibatalkan.'],
+        cancelled: ['Sesi Dibatalkan', 'Sesi yang dibatalkan, ditolak tutor, atau kedaluwarsa.'],
         pending: ['Pengajuan Sesi', 'Pengajuan sesi yang sedang menunggu konfirmasi tutor.'],
     };
     let activeSessionFilter = 'all';
@@ -1144,7 +1144,7 @@ if (dashboard) {
             const matchesTab = activeSessionFilter === 'all'
                 || (activeSessionFilter === 'upcoming' && ['pending', 'confirmed', 'in_progress'].includes(status))
                 || (activeSessionFilter === 'completed' && status === 'completed')
-                || (activeSessionFilter === 'cancelled' && status === 'cancelled')
+                || (activeSessionFilter === 'cancelled' && ['cancelled', 'rejected', 'expired'].includes(status))
                 || (activeSessionFilter === 'pending' && status === 'pending');
             const searchable = `${card.dataset.sessionTutor} ${card.innerText}`.toLocaleLowerCase('id');
             return matchesTab && (!query || searchable.includes(query));
@@ -1263,11 +1263,17 @@ if (dashboard) {
             const item = result.session;
             const title = document.createElement('h2'); title.id = 'session-detail-title'; title.textContent = `${item.subject} · ${item.topic}`;
             const fields = document.createElement('dl'); fields.className = 'session-detail-fields';
-            [['Tutor', item.tutor_name], ['Institusi', item.tutor_university || '—'], ['Tanggal', item.date_label], ['Waktu', item.time_label], ['Jenjang', item.grade_level], ['Status', item.status.replaceAll('_', ' '),], ['Pertemuan', `Online (${item.meeting_platform})`]].forEach(([label, value]) => {
+            [['Tutor', item.tutor_name], ['Institusi', item.tutor_university || '—'], ['Tanggal', item.date_label], ['Waktu', item.time_label], ['Jenjang', item.grade_level], ['Status', item.status_label || item.status.replaceAll('_', ' ')], ['Pertemuan', `Online (${item.meeting_platform})`]].forEach(([label, value]) => {
                 const term = document.createElement('dt'); term.textContent = label;
                 const description = document.createElement('dd'); description.textContent = value;
                 fields.append(term, description);
             });
+            const reason = item.status === 'rejected' ? item.rejection_reason : (item.status === 'cancelled' ? item.cancel_reason : null);
+            if (reason) {
+                const term = document.createElement('dt'); term.textContent = item.status === 'rejected' ? 'Alasan penolakan' : 'Alasan pembatalan';
+                const description = document.createElement('dd'); description.textContent = reason;
+                fields.append(term, description);
+            }
             sessionDetailContent.replaceChildren(kicker, title, fields);
             const canCancel = sessionPage.dataset.canManageSessions === '1'
                 && ['pending', 'confirmed'].includes(item.status) && new Date(item.starts_at) > new Date();
@@ -1418,7 +1424,8 @@ if (dashboard) {
         const cutoff = periodDays ? Date.now() - periodDays * 86400000 : 0;
         const list = historyCards.filter((card) => {
             const start = Number(card.dataset.date) * 1000;
-            const matchesStatus = historyStatus === 'all' || card.dataset.status === historyStatus;
+            const matchesStatus = historyStatus === 'all' || card.dataset.status === historyStatus
+                || (historyStatus === 'cancelled' && ['rejected', 'expired'].includes(card.dataset.status));
             const matchesSubject = subject === 'all' || card.dataset.subject === subject;
             const matchesPeriod = !periodDays || (start >= cutoff && start <= Date.now());
             const matchesSearch = !query || card.dataset.search.includes(query);
@@ -1477,7 +1484,7 @@ if (dashboard) {
     });
     safeInit('riwayat sesi', renderHistory);
 
-    const historyStatusLabels = { pending: 'Menunggu Konfirmasi', confirmed: 'Terkonfirmasi', in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan' };
+    const historyStatusLabels = { pending: 'Menunggu Konfirmasi', confirmed: 'Terkonfirmasi', in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan', rejected: 'Ditolak Tutor', expired: 'Kedaluwarsa' };
     const openHistoryDetails = async (card) => {
         if (!card || !historyDetailDialog || !historyDetailContent) return;
         const kicker = document.createElement('span'); kicker.className = 'section-kicker'; kicker.textContent = 'RIWAYAT SESI BELAJAR';

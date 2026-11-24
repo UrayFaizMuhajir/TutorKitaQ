@@ -81,16 +81,7 @@ class LearningSessionController extends Controller
     {
         $now = now();
         $endsAt = $session->endsAt();
-        $status = $session->status;
-        if ($status === 'confirmed' && $now->between($session->starts_at, $endsAt)) {
-            $status = 'in_progress';
-        } elseif ($status === 'confirmed' && $now->greaterThan($endsAt)) {
-            $status = 'completed';
-        }
-        $meetingUrl = $session->meeting_url;
-        $hasRealMeetingUrl = is_string($meetingUrl)
-            && filter_var($meetingUrl, FILTER_VALIDATE_URL)
-            && in_array(parse_url($meetingUrl, PHP_URL_SCHEME), ['http', 'https'], true);
+        $status = $session->displayStatus($now);
 
         return [
             'id' => $session->id,
@@ -107,10 +98,14 @@ class LearningSessionController extends Controller
             'time_label' => UserTime::timeRange($session->starts_at, $endsAt),
             'duration_minutes' => $session->duration_minutes,
             'meeting_platform' => $session->meeting_platform,
-            'meeting_url' => $hasRealMeetingUrl ? $meetingUrl : null,
+            // Tautan kelas hanya dikirim saat tombol Masuk Kelas aktif (TT-15).
+            'meeting_url' => $session->canJoin($now) ? $session->meetingLink() : null,
+            'can_join' => $session->canJoin($now),
             'status' => $status,
+            'status_label' => LearningSession::STATUS_LABELS[$status] ?? $status,
             'cancelled_by' => $session->cancelled_by,
             'cancel_reason' => $session->cancel_reason,
+            'rejection_reason' => $session->rejection_reason,
             'conflicts' => $conflicts,
             'can_reschedule' => (bool) $session->slot_id && in_array($session->status, LearningSession::ACTIVE_STATUSES, true) && $session->starts_at->isFuture(),
         ];

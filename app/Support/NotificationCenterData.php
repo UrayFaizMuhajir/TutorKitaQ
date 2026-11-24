@@ -48,6 +48,9 @@ class NotificationCenterData
     private static function syncActivity(string $userId): void
     {
         LearningSession::query()->where('student_id', $userId)->get()->each(function (LearningSession $session) use ($userId): void {
+            // Sesi berbasis slot: keputusan tutor, pembatalan tutor, dan kedaluwarsa sudah dikirim langsung lewat Notifier
+            // (SessionDecision/TutorSlotController) — di sini hanya konfirmasi pengajuan & selesai agar tidak ganda.
+            if ($session->slot_id && ! in_array($session->status, ['pending', 'completed'], true)) return;
             $statusLabel = match ($session->status) {
                 'confirmed' => 'Sesi Belajar Dikonfirmasi',
                 'cancelled' => 'Sesi Belajar Dibatalkan',

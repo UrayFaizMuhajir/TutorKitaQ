@@ -41,7 +41,7 @@ class DashboardNavigationTest extends TestCase
         // Sejak verifikasi siswa (ROADMAP 5.1), menu Siswa punya item ke-8: Profil & Verifikasi.
         $this->assertSame(['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history', 'student-verification'], DashboardNavigation::forRole('student')['pages']);
         // Sejak slot jadwal (ROADMAP 2.2): tutor terverifikasi punya menu "Jadwal Saya".
-        $this->assertSame(['dashboard', 'schedule', 'materials', 'notifications'], DashboardNavigation::forRole('tutor')['pages']);
+        $this->assertSame(['dashboard', 'schedule', 'teaching', 'materials', 'notifications'], DashboardNavigation::forRole('tutor')['pages']);
         // Sejak verifikasi tutor: Verifikasi Tutor jadi halaman; Pengguna tetap dialog.
         // Sejak TT-10 (ROADMAP 5.2): menu Admin punya halaman Verifikasi Siswa.
         $this->assertSame(['dashboard', 'tutor-verifications', 'student-verifications', 'notifications'], DashboardNavigation::forRole('admin')['pages']);

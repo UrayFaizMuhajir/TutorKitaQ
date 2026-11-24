@@ -143,6 +143,22 @@ describe('dashboard.js', () => {
         expect(document.querySelector('[data-session-cancel]').hidden).toBe(false);
     });
 
+    it('detail sesi yang ditolak tutor menampilkan label status, alasan penolakan, dan tanpa tombol Batalkan (TT-15)', async () => {
+        globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ session: { ...sessionJson.session, status: 'rejected', status_label: 'Ditolak Tutor', rejection_reason: 'Topik di luar keahlian saya.' } }) }));
+        await loadDashboard(dashboardHtml());
+
+        document.querySelector('[data-session-detail]').click();
+        await flush();
+        await flush();
+
+        const content = document.querySelector('[data-session-detail-content]').textContent;
+        expect(content).toContain('Ditolak Tutor');
+        expect(content).toContain('Alasan penolakan');
+        expect(content).toContain('Topik di luar keahlian saya.');
+        expect(document.querySelector('[data-session-cancel]').hidden).toBe(true);
+        expect(consoleError).not.toHaveBeenCalled();
+    });
+
     it('sesi dengan data aneh yang membuat render daftar sesi gagal tidak mematikan menu profil maupun Lihat Detail', async () => {
         await loadDashboard(dashboardHtml(), () => {
             Object.defineProperty(document.querySelector('[data-session-card]'), 'innerText', {
