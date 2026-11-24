@@ -1268,6 +1268,11 @@ if (dashboard) {
                 const description = document.createElement('dd'); description.textContent = value;
                 fields.append(term, description);
             });
+            if (item.attendance_label) {
+                const term = document.createElement('dt'); term.textContent = 'Kehadiran';
+                const description = document.createElement('dd'); description.textContent = item.attendance_label;
+                fields.append(term, description);
+            }
             const reason = item.status === 'rejected' ? item.rejection_reason : (item.status === 'cancelled' ? item.cancel_reason : null);
             if (reason) {
                 const term = document.createElement('dt'); term.textContent = item.status === 'rejected' ? 'Alasan penolakan' : 'Alasan pembatalan';
@@ -1484,7 +1489,7 @@ if (dashboard) {
     });
     safeInit('riwayat sesi', renderHistory);
 
-    const historyStatusLabels = { pending: 'Menunggu Konfirmasi', confirmed: 'Terkonfirmasi', in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan', rejected: 'Ditolak Tutor', expired: 'Kedaluwarsa' };
+    const historyStatusLabels = { pending: 'Menunggu Konfirmasi', confirmed: 'Terkonfirmasi', in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan', rejected: 'Ditolak Tutor', expired: 'Kedaluwarsa', awaiting_completion: 'Menunggu Konfirmasi Tutor' };
     const openHistoryDetails = async (card) => {
         if (!card || !historyDetailDialog || !historyDetailContent) return;
         const kicker = document.createElement('span'); kicker.className = 'section-kicker'; kicker.textContent = 'RIWAYAT SESI BELAJAR';
@@ -1499,9 +1504,11 @@ if (dashboard) {
             const session = result.session;
             const title = document.createElement('h2'); title.id = 'history-detail-title'; title.textContent = `${session.subject} · ${session.topic}`;
             const fields = document.createElement('dl');
-            [['Tutor', session.tutor_name], ['Institusi', session.tutor_university || 'Belum tersedia'], ['Tanggal', session.date_label], ['Waktu', `${session.time_label} (${session.duration_minutes} menit)`], ['Jenjang', session.grade_level], ['Pertemuan', `Online (${session.meeting_platform})`], ['Status', historyStatusLabels[session.status] || session.status]]
+            [['Tutor', session.tutor_name], ['Institusi', session.tutor_university || 'Belum tersedia'], ['Tanggal', session.date_label], ['Waktu', `${session.time_label} (${session.duration_minutes} menit)`], ['Jenjang', session.grade_level], ['Pertemuan', `Online (${session.meeting_platform})`], ['Status', session.status_label || historyStatusLabels[session.status] || session.status], ...(session.attendance_label ? [['Kehadiran', session.attendance_label]] : [])]
                 .forEach(([label, value]) => { const term = document.createElement('dt'); term.textContent = label; const description = document.createElement('dd'); description.textContent = value; fields.append(term, description); });
-            const note = document.createElement('p'); note.className = 'history-detail-note'; note.textContent = 'Catatan dan materi khusus sesi ini belum tersedia.';
+            // TT-16: catatan sesi + catatan tutor untuk siswa ini (teks biasa, tanpa HTML).
+            const notes = [session.session_note && `Catatan sesi: ${session.session_note}`, session.tutor_note && `Catatan untukmu: ${session.tutor_note}`].filter(Boolean);
+            const note = document.createElement('p'); note.className = `history-detail-note${notes.length ? ' has-note' : ''}`; note.textContent = notes.length ? notes.join('\n') : 'Catatan tutor untuk sesi ini belum tersedia.';
             historyDetailContent.replaceChildren(kicker, title, fields, note);
         } catch (error) {
             const message = document.createElement('p'); message.className = 'session-form-error'; message.textContent = error.message;

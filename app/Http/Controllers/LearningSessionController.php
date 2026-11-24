@@ -106,6 +106,12 @@ class LearningSessionController extends Controller
             'cancelled_by' => $session->cancelled_by,
             'cancel_reason' => $session->cancel_reason,
             'rejection_reason' => $session->rejection_reason,
+            // TT-16: presensi & catatan tutor (milik siswa ini sendiri) — terlihat setelah tutor mengisinya.
+            'attendance' => $session->attendance,
+            'attendance_label' => $session->attendanceLabel(),
+            'session_note' => $session->session_note,
+            'tutor_note' => $session->tutor_note,
+            'completed_at' => $session->completed_at ? UserTime::dateTime($session->completed_at) : null,
             'conflicts' => $conflicts,
             'can_reschedule' => (bool) $session->slot_id && in_array($session->status, LearningSession::ACTIVE_STATUSES, true) && $session->starts_at->isFuture(),
         ];

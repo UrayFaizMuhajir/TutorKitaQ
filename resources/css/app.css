@@ -1995,6 +1995,15 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .teaching-accept-form input { flex: 1; min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
 .teaching-accept-form .button { width: auto; padding-inline: 14px; }
 @media (max-width: 520px) { .teaching-accept-form, .slot-cancel-form { flex-direction: column; } }
+/* Presensi (TT-16). */
+.teaching-attendance-form { display: grid; gap: 10px; }
+.attendance-options { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; border: 0; font-size: 12px; }
+.attendance-options label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.attendance-note { min-height: 36px; padding: 7px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
+.teaching-attendance-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
+.status-awaiting_completion { background:#fff0d5; color:#8c5810; }
+.history-status-awaiting_completion { background:#fff0d6; color:#a96b0d; }
+.history-detail-note.has-note { white-space: pre-line; }
 .tutor-impact-confirm { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .tutor-impact-warning { flex-basis: 100%; }
 .verification-page .tutor-review-actions form[data-tutor-status-form] { flex-wrap: wrap; }

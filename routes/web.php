@@ -81,6 +81,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/dashboard/tutor/sessions/{learningSession}/accept', [TutorSessionController::class, 'accept'])->middleware('tutor.verified')->whereNumber('learningSession')->name('dashboard.tutor.sessions.accept');
     Route::post('/dashboard/tutor/sessions/{learningSession}/reject', [TutorSessionController::class, 'reject'])->middleware('role:tutor')->whereNumber('learningSession')->name('dashboard.tutor.sessions.reject');
     Route::post('/dashboard/tutor/sessions/{learningSession}/meeting-link', [TutorSessionController::class, 'meetingLink'])->middleware('role:tutor')->whereNumber('learningSession')->name('dashboard.tutor.sessions.meeting-link');
+    // Presensi, catatan, tandai selesai per slot (ROADMAP 3.4 · TT-16): setelah waktu mulai; tutor terverifikasi (aktif/nonaktif).
+    Route::post('/dashboard/tutor/slots/{slot}/attendance', [TutorSessionController::class, 'attendance'])->middleware('role:tutor')->whereNumber('slot')->name('dashboard.tutor.slots.attendance');
 
     // Verifikasi tutor yang mendaftar sendiri (halaman "Profil & Verifikasi").
     Route::middleware('role:tutor')->prefix('/dashboard/tutor-verification')->name('dashboard.tutor-verification.')->group(function (): void {

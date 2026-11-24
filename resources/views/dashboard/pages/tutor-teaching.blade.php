@@ -1,14 +1,16 @@
 {{-- "Sesi Mengajar" tutor (ROADMAP 3.3 · TT-15): terima/tolak pengajuan PER SISWA, tautan kelas. Waktu dalam zona pengguna.
      PRIVASI (Aturan no. 11): per siswa hanya nama + data sesi (mapel, jenjang, topik). --}}
 @php
-    $teaching = $tutor_teaching ?? ['tabs' => ['pending' => [], 'upcoming' => [], 'history' => []], 'counts' => ['pending' => 0, 'upcoming' => 0, 'history' => 0]];
+    $teaching = $tutor_teaching ?? ['tabs' => [], 'counts' => []];
     $canAccept = $tutor_can_manage ?? false;
     $teachingErrors = $errors->getBag('teaching');
-    $statusTones = ['pending' => 'is-pending', 'confirmed' => 'is-verified', 'in_progress' => 'is-verified', 'completed' => 'is-incomplete', 'cancelled' => 'is-rejected', 'rejected' => 'is-rejected', 'expired' => 'is-incomplete'];
-    $tabLabels = ['pending' => 'Pengajuan', 'upcoming' => 'Mendatang', 'history' => 'Riwayat'];
+    $statusTones = ['pending' => 'is-pending', 'confirmed' => 'is-verified', 'in_progress' => 'is-verified', 'completed' => 'is-incomplete', 'awaiting_completion' => 'is-pending', 'cancelled' => 'is-rejected', 'rejected' => 'is-rejected', 'expired' => 'is-incomplete'];
+    $tabLabels = ['pending' => 'Pengajuan', 'upcoming' => 'Mendatang', 'attendance' => 'Presensi', 'history' => 'Riwayat'];
+    $attendanceLabels = \App\Models\LearningSession::ATTENDANCE_LABELS;
     $emptyText = [
         'pending' => 'Belum ada pengajuan yang perlu dijawab.',
         'upcoming' => 'Belum ada sesi yang diterima.',
+        'attendance' => 'Belum ada sesi yang perlu dipresensi. Presensi dibuka setelah sesi dimulai.',
         'history' => 'Belum ada riwayat sesi.',
     ];
 @endphp
@@ -36,6 +38,9 @@
                         <div class="slot-card-head">
                             <div><h3>{{ $group['label'] }}</h3>@if ($group['slot'])<p class="slot-capacity">Terisi {{ $group['slot']->booked_count }}/{{ $group['slot']->capacity }}</p>@endif</div>
                         </div>
+                        @if ($tabKey === 'attendance' && $group['slot'])
+                            <form method="post" action="{{ route('dashboard.tutor.slots.attendance', $group['slot']->id) }}" class="role-form teaching-attendance-form" data-attendance-form>@csrf
+                        @endif
                         <ul class="slot-bookings teaching-list">
                             @foreach ($group['sessions'] as $row)
                                 <li class="teaching-row" data-teaching-session="{{ $row['id'] }}" data-status="{{ $row['status'] }}">
@@ -44,6 +49,17 @@
                                         <span class="verification-badge {{ $statusTones[$row['status']] ?? 'is-pending' }}">{{ $row['status_label'] }}</span>
                                     </div>
                                     @if ($row['reason'])<p class="verification-note">Alasan: {{ $row['reason'] }}</p>@endif
+                                    @if ($tabKey === 'attendance')
+                                        <fieldset class="attendance-options"><legend class="sr-only">Presensi {{ $row['student_name'] }}</legend>
+                                            @foreach ($attendanceLabels as $value => $label)
+                                                <label><input type="radio" name="attendance[{{ $row['id'] }}]" value="{{ $value }}" @checked($row['attendance'] === $value)> {{ $label }}</label>
+                                            @endforeach
+                                        </fieldset>
+                                        <label class="sr-only" for="tutor-note-{{ $row['id'] }}">Catatan untuk {{ $row['student_name'] }}</label>
+                                        <input id="tutor-note-{{ $row['id'] }}" class="attendance-note" name="notes[{{ $row['id'] }}]" maxlength="500" value="{{ $row['tutor_note'] }}" placeholder="Catatan untuk {{ $row['student_name'] }} (opsional)">
+                                    @elseif ($row['attendance_label'])
+                                        <p class="verification-note">Kehadiran: <strong>{{ $row['attendance_label'] }}</strong>@if ($row['tutor_note']) · Catatan: {{ $row['tutor_note'] }}@endif</p>
+                                    @endif
                                     @if ($row['meeting_url'])<p class="verification-note">Tautan kelas ({{ $row['meeting_platform'] }}): <a href="{{ $row['meeting_url'] }}" target="_blank" rel="noopener noreferrer">{{ $row['meeting_url'] }}</a></p>@endif
                                     @if ($row['can_decide'])
                                         <div class="slot-actions">
@@ -70,6 +86,14 @@
                                 </li>
                             @endforeach
                         </ul>
+                        @if ($tabKey === 'attendance' && $group['slot'])
+                                <label>Catatan sesi (dibaca semua siswa di slot ini, opsional)<textarea name="session_note" rows="3" maxlength="2000" placeholder="Ringkasan materi, PR, atau hal yang perlu diulang.">{{ $group['session_note'] }}</textarea></label>
+                                <div class="role-dialog-actions"><button type="submit" class="button button-outline">Simpan presensi</button><button type="submit" name="complete" value="1" class="button button-primary">Simpan &amp; tandai selesai</button></div>
+                                <small class="verification-note">Tandai selesai butuh presensi semua siswa. Setelah selesai, data tidak bisa diubah lagi.</small>
+                            </form>
+                        @elseif ($group['session_note'])
+                            <p class="verification-note">Catatan sesi: {{ $group['session_note'] }}</p>
+                        @endif
                     </article>
                 @endforeach
                 <p class="role-state verification-empty" data-admin-empty @if ($groups !== []) hidden @endif>{{ $emptyText[$tabKey] }}</p>

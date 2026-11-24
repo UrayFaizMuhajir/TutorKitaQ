@@ -159,6 +159,28 @@ describe('dashboard.js', () => {
         expect(consoleError).not.toHaveBeenCalled();
     });
 
+    it('Riwayat Sesi menampilkan kehadiran dan catatan tutor sebagai teks biasa (TT-16)', async () => {
+        const completed = { ...sessionJson.session, status: 'completed', status_label: 'Selesai', attendance_label: 'Hadir', session_note: 'Bab 3 <b>PR</b>', tutor_note: 'Aktif bertanya.' };
+        globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ session: completed }) }));
+        const history = `
+            <section class="spa-page" data-spa-page="history" hidden>
+                <div data-history-list><article data-history-card data-id="1" data-status="completed" data-subject="IPA" data-date="1" data-search="ipa" data-detail-url="/dashboard/sessions/1"><button type="button" data-history-detail>Lihat Detail</button></article></div>
+                <dialog data-history-detail-dialog><div data-history-detail-content></div><button type="button" data-history-dialog-close>Tutup</button></dialog>
+            </section>`;
+        await loadDashboard(dashboardHtml().replace('</main>', `${history}</main>`));
+
+        document.querySelector('[data-history-detail]').click();
+        await flush();
+        await flush();
+
+        const content = document.querySelector('[data-history-detail-content]');
+        expect(content.textContent).toContain('Kehadiran');
+        expect(content.textContent).toContain('Hadir');
+        expect(content.textContent).toContain('Catatan untukmu: Aktif bertanya.');
+        expect(content.querySelector('b')).toBeNull(); // catatan tidak dirender sebagai HTML
+        expect(consoleError).not.toHaveBeenCalled();
+    });
+
     it('sesi dengan data aneh yang membuat render daftar sesi gagal tidak mematikan menu profil maupun Lihat Detail', async () => {
         await loadDashboard(dashboardHtml(), () => {
             Object.defineProperty(document.querySelector('[data-session-card]'), 'innerText', {

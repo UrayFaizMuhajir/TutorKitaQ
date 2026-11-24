@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\LearningSession;
+use App\Models\TutorAvailabilitySlot;
+use App\Support\SessionCompletion;
 use App\Support\SessionDecision;
 use App\Support\TutorVerification;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +49,29 @@ class TutorSessionController extends Controller
         if ($failed = $this->attempt(fn () => SessionDecision::setMeetingLink($session, (string) $request->user()->name, $data['meeting_url']))) return $failed;
 
         return redirect(self::PAGE)->with('status', 'Tautan kelas disimpan. Siswa mendapat notifikasi.');
+    }
+
+    /** Presensi + catatan per slot (TT-16); `complete=1` sekaligus menandai semua sesi confirmed di slot itu selesai. */
+    public function attendance(Request $request, int $slot): RedirectResponse
+    {
+        $this->assertVerified($request);
+        $data = $request->validateWithBag('teaching', [
+            'attendance' => ['nullable', 'array'],
+            'attendance.*' => ['nullable', 'string', 'in:'.implode(',', array_keys(LearningSession::ATTENDANCE_LABELS))],
+            'notes' => ['nullable', 'array'],
+            'notes.*' => ['nullable', 'string', 'max:500'],
+            'session_note' => ['nullable', 'string', 'max:2000'],
+            'complete' => ['nullable', 'boolean'],
+        ], [
+            'attendance.*.in' => 'Pilihan presensi tidak valid.',
+            'notes.*.max' => 'Catatan per siswa maksimal 500 karakter.',
+            'session_note.max' => 'Catatan sesi maksimal 2000 karakter.',
+        ]);
+        $model = TutorAvailabilitySlot::query()->whereKey($slot)->where('tutor_id', (string) $request->user()->getAuthIdentifier())->firstOrFail();
+        $complete = (bool) ($data['complete'] ?? false);
+        if ($failed = $this->attempt(fn () => SessionCompletion::record($model, (string) $request->user()->name, $data['attendance'] ?? [], $data['notes'] ?? [], $data['session_note'] ?? null, $complete))) return $failed;
+
+        return redirect(self::PAGE)->with('status', $complete ? 'Sesi ditandai selesai. Siswa mendapat notifikasi.' : 'Presensi dan catatan disimpan.');
     }
 
     /** @return list<string> */

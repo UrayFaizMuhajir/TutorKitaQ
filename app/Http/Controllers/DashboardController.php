@@ -364,8 +364,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * "Sesi Mengajar" (TT-15): sesi milik tutor dikelompokkan per slot dalam tiga tab — Pengajuan (pending mendatang),
-     * Mendatang (confirmed belum selesai), Riwayat (sisanya). PRIVASI (Aturan no. 11): per siswa hanya nama + data sesi.
+     * "Sesi Mengajar" (TT-15/16): sesi milik tutor dikelompokkan per slot dalam empat tab — Pengajuan (pending mendatang),
+     * Mendatang (confirmed belum mulai), Presensi (confirmed sudah mulai, belum ditandai selesai), Riwayat (sisanya).
+     * PRIVASI (Aturan no. 11): per siswa hanya nama + data sesi.
      *
      * @return array{tabs: array<string, list<array<string, mixed>>>, counts: array<string, int>, pending_count: int}
      */
@@ -379,7 +380,9 @@ class DashboardController extends Controller
                 $future = $session->starts_at->greaterThan($now);
                 $tab = match (true) {
                     $session->status === 'pending' && $future => 'pending',
-                    $session->status === 'confirmed' && $session->endsAt()->greaterThan($now) => 'upcoming',
+                    $session->status === 'confirmed' && $future => 'upcoming',
+                    // TT-16: sudah mulai tetapi belum ditandai selesai → presensi + "Tandai selesai".
+                    $session->status === 'confirmed' => 'attendance',
                     default => 'history',
                 };
 
@@ -401,16 +404,21 @@ class DashboardController extends Controller
                     'meeting_platform' => $session->meeting_platform,
                     'can_decide' => $tab === 'pending',
                     'can_set_link' => $session->status === 'confirmed' && $future,
+                    'attendance' => $session->attendance,
+                    'attendance_label' => $session->attendanceLabel(),
+                    'tutor_note' => $session->tutor_note,
+                    'session_note' => $session->session_note,
                 ];
             });
 
         $tabs = [];
-        foreach (['pending', 'upcoming', 'history'] as $tab) {
+        foreach (['pending', 'upcoming', 'attendance', 'history'] as $tab) {
             $tabRows = $rows->where('tab', $tab);
             if ($tab === 'history') $tabRows = $tabRows->sortByDesc(fn (array $row) => $row['starts_at']->getTimestamp());
             $tabs[$tab] = $tabRows->groupBy('group')->map(fn ($group): array => [
                 'label' => $group->first()['label'],
                 'slot' => $group->first()['slot'],
+                'session_note' => $group->pluck('session_note')->filter()->first(),
                 'sessions' => $group->values()->all(),
                 'search' => \Illuminate\Support\Str::lower($group->first()['label'].' '.$group->pluck('student_name')->join(' ').' '.$group->pluck('subject')->join(' ')),
             ])->values()->all();

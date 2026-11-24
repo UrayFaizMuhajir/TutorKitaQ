@@ -21,6 +21,7 @@ class LearningSession extends Model
         'pending' => 'Menunggu Konfirmasi',
         'confirmed' => 'Terkonfirmasi',
         'in_progress' => 'Sedang Berlangsung',
+        'awaiting_completion' => 'Menunggu Konfirmasi Tutor',
         'completed' => 'Selesai',
         'cancelled' => 'Dibatalkan',
         'rejected' => 'Ditolak Tutor',
@@ -30,26 +31,38 @@ class LearningSession extends Model
     protected $fillable = [
         'student_id', 'tutor_id', 'slot_id', 'tutor_name', 'tutor_university', 'tutor_major', 'subject', 'topic',
         'grade_level', 'starts_at', 'duration_minutes', 'meeting_platform', 'meeting_url', 'status', 'cancelled_by', 'cancel_reason',
-        'decided_at', 'rejection_reason',
+        'decided_at', 'rejection_reason', 'attendance', 'tutor_note', 'session_note', 'completed_at',
     ];
+
+    /** Presensi per siswa (TT-16). */
+    public const ATTENDANCE_LABELS = ['present' => 'Hadir', 'absent' => 'Tidak hadir', 'excused' => 'Izin'];
 
     protected function casts(): array
     {
         return [
             'starts_at' => 'immutable_datetime',
             'decided_at' => 'immutable_datetime',
+            'completed_at' => 'immutable_datetime',
             'duration_minutes' => 'integer',
         ];
     }
 
-    /** Status untuk tampilan: confirmed menjadi in_progress/completed menurut waktu (completed otomatis dihapus di TT-16). */
+    /**
+     * Status untuk tampilan. confirmed → in_progress selama berlangsung; setelah berakhir → awaiting_completion
+     * ("Menunggu Konfirmasi Tutor"). `completed` HANYA dari tutor lewat "Tandai selesai" (TT-16), tidak dari waktu.
+     */
     public function displayStatus(?\Carbon\CarbonInterface $now = null): string
     {
         $now ??= now();
         if ($this->status === 'confirmed' && $now->between($this->starts_at, $this->endsAt())) return 'in_progress';
-        if ($this->status === 'confirmed' && $now->greaterThan($this->endsAt())) return 'completed';
+        if ($this->status === 'confirmed' && $now->greaterThan($this->endsAt())) return 'awaiting_completion';
 
         return $this->status;
+    }
+
+    public function attendanceLabel(): ?string
+    {
+        return self::ATTENDANCE_LABELS[$this->attendance] ?? null;
     }
 
     /** Tautan kelas hanya dianggap ada bila URL http(s) yang valid. */

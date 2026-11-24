@@ -71,13 +71,16 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   id 4 `siswa@tutorkita.test`) kini berstatus Belum lengkap → harus melengkapi profil sebelum bisa mengajukan sesi.
 - 2026-11-26 TAHAP 1 selesai (BUB): konversi data lama, A slot tutor, B katalog asli, C pesan/batal/ganti jadwal + bentrok.
 - LANJUTKAN DI SESI BARU dari bagian "Rencana kerja mandiri (Tahap 2–6)" di bawah: pemilik mengizinkan kerja mandiri tanpa
-  persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). Mulai dari TAHAP 2 (TT-15).
+  persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). TAHAP 2 selesai 2026-11-24 → mulai TAHAP 3.
 
 - TAHAP 2 dimulai (tanggal sistem 2026-11-24; tanggal 11-25/26 di atas berasal dari sesi sebelumnya):
   - Jam notifikasi mengikuti zona pembaca — commit c1d2d1b (belum diuji browser). Migrasi aditif
     `2026_11_27_000001_add_data_to_user_notifications` (kolom `data` JSON nullable). Backup: `database/backup-20261124-133309-sebelum-notif-tz/`.
   - TT-15 (3.3) selesai — commit tersendiri (belum diuji browser). Migrasi aditif `2026_11_27_000002_add_decision_columns_to_learning_sessions`.
-    Backup: `database/backup-20261124-133954-sebelum-tt15/`. Berikutnya: TT-16 (3.4).
+    Backup: `database/backup-20261124-133954-sebelum-tt15/`.
+  - TT-16 (3.4) selesai — commit tersendiri (belum diuji browser). Migrasi aditif `2026_11_27_000003_add_attendance_columns_to_learning_sessions`.
+    Backup: `database/backup-20261124-134904-sebelum-tt16/`.
+  - **TAHAP 2 SELESAI** (BUB). Git bundle: `D:\tutorkita-tahap2-20261124.bundle`. LANJUTKAN DI SESI BARU dari TAHAP 3.
 
 ## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
 Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
@@ -145,6 +148,11 @@ I. TT-15 Sesi Mengajar (3.3)
   6. Terima tanpa tautan → baris Mendatang punya kolom "Simpan tautan"; siswa mendapat notifikasi "Tautan kelas tersedia".
   7. Pengajuan yang dibiarkan sampai jam mulai → setelah muat ulang: "Kedaluwarsa", kursi kosong, siswa dapat notifikasi.
   8. Admin menonaktifkan tutor@ → halaman Sesi Mengajar: tombol Terima hilang, Tolak tetap ada.
+J. TT-16 Presensi & selesai (3.4) — pakai slot yang dimulai tak lama lagi (atau majukan jam laptop)
+  1. Sebelum jam mulai: tab Presensi kosong. Setelah mulai: kartu slot berisi siswa yang DITERIMA saja (radio + catatan).
+  2. "Simpan & tandai selesai" dengan satu siswa kosong → pesan merah; isi semua → pindah ke Riwayat "Selesai" + Kehadiran.
+  3. Siswa: notifikasi "Sesi selesai" + kehadiran; Riwayat Sesi → Lihat Detail: Kehadiran, Catatan sesi, Catatan untukmu.
+  4. Sesi diterima yang dibiarkan lewat tanpa ditandai → siswa melihat "Menunggu Konfirmasi Tutor" (bukan Selesai).
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -207,7 +215,13 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
   `DashboardController`, tanpa scheduler; kursi dilepas). Tautan kelas `url:https`, platform dari host. "Masuk Kelas" =
   `LearningSession::canJoin()`; JSON detail hanya mengirim tautan saat tombol aktif. `LearningSession::{displayStatus,
   STATUS_LABELS, CLOSED_STATUSES}` dipakai bersama. Tes `TutorSessionDecisionTest`.
-- 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
+- 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Selesai (BUB), 2026-11-24**: tab "Presensi" di Sesi
+  Mengajar (sesi confirmed yang sudah mulai), satu form per slot: Hadir/Tidak hadir/Izin + catatan per siswa + catatan sesi,
+  "Simpan presensi" / "Simpan & tandai selesai" (wajib semua siswa; setelah selesai terkunci). `App\Support\SessionCompletion`,
+  route `dashboard.tutor.slots.attendance` (`role:tutor` + terverifikasi, tutor nonaktif tetap boleh). Kolom `attendance`,
+  `tutor_note`, `session_note`, `completed_at`. Selesai otomatis DIHAPUS: confirmed yang lewat = `awaiting_completion`
+  ("Menunggu Konfirmasi Tutor", `LearningSession::displayStatus`). Siswa melihat kehadiran + catatan di detail Riwayat/Sesi.
+  Tes `TutorSessionCompletionTest`; helper tes bersama `tests/Concerns/BooksTutorSessions.php`.
 
 ### Tahap 4: Tugas & materi untuk siswa
 - 4.1 UI tutor untuk tugas (hanya siswa yang pernah sesi dengannya; daftar pengumpulan; unduh; nilai + umpan balik) — **Sebagian** (backend `create`/`grade` saja).
@@ -252,7 +266,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. "(BUB)" = belum diuji b
 | TT-10 | [Admin] Lihat, cari, verifikasi siswa | To Do | ✅ | Menu Verifikasi Siswa, `AdminStudentVerificationTest` | Done (BUB) |
 | TT-12 | [Siswa] Ajukan & batalkan sesi | To Do | ✅ | Pesan slot (kapasitas, atomik, konkuren dites), batal membebaskan kursi | Done (BUB) |
 | TT-15 | [Tutor] Terima/tolak pengajuan sesi | To Do | ✅ | Sesi Mengajar: terima/tolak per siswa, alasan, tautan https, kedaluwarsa, `TutorSessionDecisionTest` | Done (BUB) |
-| TT-16 | [Tutor] Presensi, catatan, tandai selesai | To Do | ❌ | Status selesai masih otomatis dari waktu (ROADMAP 3.4) | To Do |
+| TT-16 | [Tutor] Presensi, catatan, tandai selesai | To Do | ✅ | Tab Presensi per slot, catatan, tandai selesai; selesai otomatis dihapus, `TutorSessionCompletionTest` | Done (BUB) |
 | TT-18 | [Siswa] Lihat & unduh materi | To Do | ✅ | Lihat, unduh PDF privat, bookmark, progres; ada tes. Gate role route baca = ROADMAP 0.2 | Done |
 | TT-19 | [Tutor] Buat tugas & menilai | To Do | 🟡 | Backend `create`/`grade` + tes; BELUM ada UI tutor; student_id bebas (ROADMAP 4.1) | In Progress |
 | TT-20 | [Siswa] Kumpulkan tugas & lihat nilai | To Do | ✅ | UI + tes lengkap di sisi siswa; baru terasa penuh setelah UI tutor (TT-19) | Done |
@@ -417,7 +431,6 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
   `new UploadedFile($path, $name, null, null, true)` (lihat `TutorVerificationTest::realUpload`).
 - Pendaftaran kini membuat baris `user_roles` saat itu juga (bukan saat login pertama); mengubah `role` di users.json
   tidak lagi mengubah role akun.
-- Status sesi `completed` dihitung otomatis dari waktu, bukan ditandai tutor — ROADMAP 3.4.
 - Mapel/jenjang di `learning_materials` dan `learning_sessions` disimpan sebagai teks, bukan FK; materi punya jenjang
   "Perguruan Tinggi" yang tidak ada di `grade_levels` — ROADMAP 2.3/3.2.
 - Route materi/tugas/mapel belum memakai `role:` (sesi sudah) — ROADMAP 0.2. (Sidebar per role & posisi menu ⌄ sudah di 0.1.)
@@ -444,9 +457,10 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
   lokal per 2026-11-24) tampil apa adanya.
 - `DashboardMockData` masih berisi `catalog_tutors`/`tutors` mock (tidak dipakai; ditimpa data asli) — hapus di 6.2.
 - Sesi yang dipindah (ganti jadwal) kembali `pending` dan harus diterima tutor lagi; tautan kelas lama tetap tersimpan.
-- Notifikasi otomatis `NotificationCenterData::syncActivity` untuk sesi berbasis slot kini hanya pending/completed; keputusan,
+- Notifikasi otomatis `NotificationCenterData::syncActivity` untuk sesi berbasis slot kini hanya pending; keputusan, selesai,
   pembatalan tutor, dan kedaluwarsa dikirim langsung (`SessionDecision`, `TutorSlotController`).
-- Status `completed` masih otomatis dari waktu sampai TT-16 (3.4).
+- Sesi confirmed yang tidak pernah ditandai selesai tetap "Menunggu Konfirmasi Tutor" (tanpa batas waktu/pengingat).
+- Presensi/catatan tidak bisa diubah setelah "Tandai selesai" (sengaja, demi kesederhanaan).
 
 ## ATURAN WAJIB
 1. Jangan pernah membuang perubahan yang belum di-commit. Dilarang `git checkout -- .`, `git reset --hard`,
