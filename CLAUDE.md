@@ -185,32 +185,118 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 - 6.1 Dashboard ringkasan & grafik per role dengan data asli — **Sebagian** (siswa saja).
 - 6.2 Bersih-bersih kode mati, DatabaseSeeder "Test User", README.md, FOR INFO.md — **Belum**.
 
-## Kartu Jira (TT Sprint 1; status Jira per 2026-11-24, status kode per audit 2026-11-24)
-Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tidak ada di board — abaikan.
+## Kartu Jira (TT Sprint 1; status Jira per 2026-11-25, status kode per audit 2026-11-25)
+Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. "(BUB)" = belum diuji browser. TT-14, TT-23, TT-24 tidak ada di board.
 
-| Kartu | Judul | Jira | Kode | ROADMAP |
-|---|---|---|---|---|
-| TT-2 | Fitur login dan logout | Done | ✅ (keamanan di 0.3) | 0.3 |
-| TT-3 | Menambah dan mengubah mapel & jenjang (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
-| TT-5 | Melihat, mencari, dan menghapus mapel (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
-| TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | ✅ (2026-11-24, uji browser tertunda) | 1.2 |
-| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | ✅ (2026-11-25, uji browser tertunda) | 1.2, 1.3 |
-| TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ✅ (2026-11-25, uji browser tertunda) | 5.1 |
-| TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ✅ (2026-11-25, uji browser tertunda) | 5.2 |
-| TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |
-| TT-8 | [Tutor] Melihat, mengubah, dan menghapus slot jadwal | In Progress | ❌ | 2.2 |
-| TT-11 | [Siswa] Mencari tutor serta melihat profil dan slot kosong | Done | 🟡 UI dengan data mock | 3.1 |
-| TT-12 | [Siswa] Mengajukan dan membatalkan pengajuan sesi | To Do | 🟡 ke tutor mock | 3.2 |
-| TT-15 | [Tutor] Menerima atau menolak pengajuan sesi | To Do | ❌ | 3.3 |
-| TT-16 | [Tutor] Presensi & catatan, menandai sesi selesai | To Do | ❌ | 3.4 |
-| TT-17 | [Tutor] Mengunggah, mengubah, dan menghapus materi | In Progress | 🟡 CRUD ada; draf tak terlihat, mapel teks | 2.3 |
-| TT-18 | [Siswa] Melihat dan mengunduh materi | To Do | 🟡 berfungsi, tanpa gate role | 4.3 |
-| TT-19 | [Tutor] Membuat tugas dan menilai pengumpulan | To Do | 🟡 backend saja | 4.1 |
-| TT-20 | [Siswa] Mengumpulkan tugas dan melihat nilai | To Do | 🟡 sebagian besar ada | 4.2 |
-| TT-21 | [Siswa] Rating dan ulasan untuk sesi selesai | To Do | ❌ | 5.3 |
-| TT-22 | [Tutor/Admin] Melihat ulasan, menyembunyikan ulasan | To Do | ❌ | 5.4 |
-| TT-13 | [Semua role] Dashboard ringkasan dan grafik | Done | 🟡 siswa saja | 6.1 (+0.1) |
-| TT-25 | [Siswa] Menambah, mengubah, menghapus jadwal pelajaran | Done | ❌ (jadwal hanya dari `learning_sessions`) | belum ada; tanyakan maksudnya |
+| Kartu | Judul | Status Jira | Kode | Catatan singkat | Usulan Jira |
+|---|---|---|---|---|---|
+| TT-2 | Fitur login dan logout | Done | ✅ | Ada tes. Keamanan (pesan seragam, rate limit) di ROADMAP 0.3 | Done |
+| TT-3 | Menambah & mengubah mapel & jenjang (Mata Pelajaranku) | Done | ✅ | `SubjectsController` + `SubjectSelectionTest` | Done |
+| TT-5 | Melihat, mencari, menghapus mapel (Mata Pelajaranku) | Done | ✅ | Cari + hapus, ada tes | Done |
+| TT-4 | [Tutor] Profil + unggah kartu mahasiswa | Done | ✅ | Daftar sebagai tutor, kartu privat, `TutorVerificationTest` | Done (BUB) |
+| TT-6 | [Admin] Setujui, tolak, nonaktifkan tutor | Done | ✅ | Verifikasi + nonaktif/aktif + audit, `TutorStatusTest` | Done (BUB) |
+| TT-9 | [Siswa] Profil + dokumen pendukung | Done | ✅ | `StudentVerificationTest` (termasuk privasi) | Done (BUB) |
+| TT-11 | [Siswa] Cari tutor, profil, slot kosong | Done | 🟡 | Katalog & dialog masih data MOCK; slot belum ada → rencana B | In Progress |
+| TT-13 | [Semua role] Dashboard ringkasan & grafik | Done | 🟡 | Siswa: stat + grafik. Tutor/Admin: stat tanpa grafik → ROADMAP 6.1 | In Progress |
+| TT-25 | [Siswa] Menambah/mengubah/menghapus jadwal pelajaran | Done | ❌ | Belum ada; "Ganti jadwal" sesi = isi kartu ini → rencana C | In Progress |
+| TT-7 | [Tutor] Menambah slot jadwal | In Progress | ❌ | Hanya checkbox `availability` lama → rencana A | In Progress |
+| TT-8 | [Tutor] Melihat/mengubah/menghapus slot | In Progress | ❌ | → rencana A | In Progress |
+| TT-17 | [Tutor] Unggah/ubah/hapus materi | In Progress | 🟡 | CRUD + tes ada, tetapi materi DRAF tidak muncul di halaman Materi (tak bisa diedit); mapel/jenjang teks (ROADMAP 2.3) | In Progress |
+| TT-10 | [Admin] Lihat, cari, verifikasi siswa | To Do | ✅ | Menu Verifikasi Siswa, `AdminStudentVerificationTest` | Done (BUB) |
+| TT-12 | [Siswa] Ajukan & batalkan sesi | To Do | 🟡 | Ajukan/batal ada (hanya siswa terverifikasi) tetapi ke tutor MOCK, tanpa slot → rencana C | In Progress |
+| TT-15 | [Tutor] Terima/tolak pengajuan sesi | To Do | ❌ | ROADMAP 3.3 | To Do |
+| TT-16 | [Tutor] Presensi, catatan, tandai selesai | To Do | ❌ | Status selesai masih otomatis dari waktu (ROADMAP 3.4) | To Do |
+| TT-18 | [Siswa] Lihat & unduh materi | To Do | ✅ | Lihat, unduh PDF privat, bookmark, progres; ada tes. Gate role route baca = ROADMAP 0.2 | Done |
+| TT-19 | [Tutor] Buat tugas & menilai | To Do | 🟡 | Backend `create`/`grade` + tes; BELUM ada UI tutor; student_id bebas (ROADMAP 4.1) | In Progress |
+| TT-20 | [Siswa] Kumpulkan tugas & lihat nilai | To Do | ✅ | UI + tes lengkap di sisi siswa; baru terasa penuh setelah UI tutor (TT-19) | Done |
+| TT-21 | [Siswa] Rating & ulasan sesi selesai | To Do | ❌ | ROADMAP 5.3 (butuh TT-16) | To Do |
+| TT-22 | [Tutor/Admin] Lihat & sembunyikan ulasan | To Do | ❌ | ROADMAP 5.4 (butuh TT-21) | To Do |
+
+Perpindahan Jira yang diusulkan: TT-11, TT-13, TT-25 Done → In Progress; TT-10, TT-18, TT-20 To Do → Done;
+TT-12, TT-19 To Do → In Progress. Lainnya tetap.
+Selesai setelah rencana A → B → C: TT-7, TT-8 (A), TT-11 (B), TT-12, TT-25 (C).
+Sisa setelah itu (urutan kerja): TT-15 (3.3) → TT-16 (3.4) → TT-19 UI tutor + TT-17 sisa draf (4.1, 2.3) → TT-21 (5.3) →
+TT-22 (5.4) → TT-13 grafik tutor/admin (6.1). Di luar Jira: ROADMAP 0.2, 0.3, 6.2.
+
+## Rencana berikutnya (menunggu persetujuan) — slot, katalog, sesi (TT-7, TT-8, TT-11, TT-12, TT-25)
+Disusun 2026-11-25 dari rencana A/B/C + perubahan pemilik. BELUM dikerjakan; tunggu persetujuan dua hal di akhir.
+Urutan: konversi data lama → A → B → C, masing-masing backup DB, semua tes + build lulus, commit "(belum diuji browser)".
+
+### Zona waktu (mengikuti laptop pengguna)
+- DB tetap UTC (`config/app.php` tidak diubah). `app.js` menulis cookie `tk_tz` = `Intl.DateTimeFormat().resolvedOptions().timeZone`;
+  form slot/sesi juga mengirim field tersembunyi `timezone`. Cookie dikecualikan dari enkripsi (`encryptCookies(except: ['tk_tz'])`).
+- Middleware `ResolveUserTimezone`: field/cookie divalidasi dengan daftar zona PHP; kosong/tidak valid → `Asia/Jakarta`.
+- Helper `App\Support\UserTime`: input lokal → UTC, UTC → zona pengguna, label "Rabu, 25 Nov · 15.00–16.00 WIB".
+  Singkatan dari PHP (Jakarta WIB, Makassar WITA, Jayapura WIT); singkatan angka → "UTC+8".
+- Konversi tampilan: sesi, slot, jadwal hari ini/minggu ini (batas hari/minggu dalam zona pengguna), riwayat, deadline tugas.
+- Batas pemesanan & bentrok dihitung di UTC. `config/tutorkita.php`: `booking_lead_minutes = 180` (3 jam).
+- Tes: tutor `Asia/Makassar` buat slot 16.00 → DB 08.00 UTC → siswa `Asia/Jakarta` melihat "15.00 WIB"; zona palsu → Jakarta.
+
+### Konversi data lama (MENUNGGU PERSETUJUAN)
+- Hanya `learning_sessions.starts_at` sesi lama (`slot_id IS NULL AND tutor_id IS NULL`) yang tersimpan sebagai jam WIB:
+  saat ini 1 baris (id 2, siswa id 4, cancelled, `2026-11-20 08:31:00`). `student_assignments` kosong; timestamp lain sudah UTC.
+- Migrasi `convert_legacy_session_times_to_utc`: kurangi 7 jam (id 2 → `2026-11-20 01:31:00` UTC, tetap tampil 08.31 WIB);
+  `down()` menambah 7 jam dengan kriteria sama. Backup `database.sqlite` dulu, bandingkan sebelum/sesudah.
+
+### A. Slot ketersediaan tutor (TT-7, TT-8 · ROADMAP 2.2)
+- Tabel `tutor_availability_slots`: `tutor_id`, `starts_at`, `ends_at` (UTC), `capacity` (default 20, 1–20), `booked_count`,
+  `status` open|full|cancelled, `cancel_reason`, timestamps; index `(tutor_id, starts_at)`. Form tetap Tanggal + Jam mulai/selesai.
+- Route `TutorSlotController`: tambah/ubah/hapus/pratinjau `tutor.verified`; batalkan slot terpesan `role:tutor` + cek
+  terverifikasi (tutor nonaktif tetap boleh membatalkan). Slot milik orang lain → 404.
+- Validasi: mulai di masa depan, durasi 30–180 menit, tidak bentrok dengan slot open/full tutor itu sendiri (cek di UTC).
+- Ulangi tiap minggu sampai tanggal X (maks. 12 minggu): tombol Pratinjau → `POST /dashboard/tutor/slots/preview`
+  (hitungan sama dengan simpan, tanpa menulis): hijau = dibuat, merah = dilewati + alasan ("Bentrok dengan slot …",
+  "Sudah lewat"). Simpan hanya tanggal aman; pesan + notifikasi berisi jumlah dibuat dan tanggal yang dilewati.
+- Slot berpemesan: tanggal/jam terkunci; kapasitas boleh diubah ≥ jumlah pemesan; hapus hanya bila 0 pemesan.
+  Batalkan slot (alasan wajib): semua sesi aktif ikut cancelled (`cancelled_by=tutor`) + notifikasi ke semua siswanya.
+- Menu tutor terverifikasi: Beranda · Jadwal Saya · Materi · Notifikasi. Jadwal Saya: form + pratinjau, tab Mendatang/Lewat,
+  filter status, "terisi X/Y", daftar siswa per slot (nama, mapel, topik SAJA — Aturan no. 11). Tutor nonaktif: hanya lihat.
+- Checkbox `tutor_profiles.availability` USANG: dihapus dari Edit Profil, `updateProfile` berhenti menulisnya, data tidak diubah.
+- Admin menonaktifkan tutor yang punya sesi aktif mendatang: kartu tutor menampilkan "X sesi mendatang, Y siswa terdampak",
+  centang "Saya paham" wajib (divalidasi server); setelah nonaktif, siswa terdampak mendapat notifikasi (sesi tidak otomatis batal).
+
+### B. Katalog tutor asli (TT-11 · ROADMAP 3.1)
+- Sumber: `TutorProfile::verified()->active()` + mapel + akun (nama, pekerjaan) + slot open 14 hari; jenjang tutor = jenjang
+  dari mapel yang diajarkan. Mock `catalog_tutors`/`tutors` dihapus dari `DashboardMockData` (landing publik tidak disentuh).
+- Foto: route `dashboard.profile.photo` boleh dibuka pengguna login untuk tutor terverifikasi DAN aktif (foto siswa tetap privat).
+- Filter mapel (`subjects`), jenjang (`grade_levels`), cari nama/kampus/mapel, "Ada slot kosong"; urutan Slot terdekat/Nama/Terbaru.
+  Lokasi, rating, dan angka palsu dihapus → "Belum ada ulasan". Favorit localStorage kunci baru berbasis id tutor.
+- Dialog: foto, nama, pekerjaan, kampus, prodi, bio, mapel, slot kosong 14 hari dengan "terisi X/Y" + "Pilih slot ini"
+  (siswa belum terverifikasi: nonaktif + penjelasan). Keadaan kosong katalog harus jelas (tutor asli baru dua).
+- Beranda siswa "Kenali tutor relawan": maks. 3 tutor asli atau keadaan kosong.
+
+### C. Ajukan/batal/ganti jadwal sesi + bentrok (TT-12, TT-25 · ROADMAP 3.2)
+- Migrasi aditif `learning_sessions`: `tutor_id`, `slot_id` (FK), `cancelled_by`, `cancel_reason`; index unik parsial SQLite
+  `UNIQUE(slot_id, student_id) WHERE slot_id IS NOT NULL AND status IN ('pending','confirmed')`. Sesi lama tetap tampil.
+- Pemesanan (`role:student` + `student.verified`): slot open, tutor terverifikasi+aktif, ≥ 3 jam lagi, mapel milik tutor,
+  jenjang milik mapel. Transaksi + kursi diambil atomik:
+  `UPDATE … SET booked_count = booked_count + 1, status = CASE WHEN booked_count + 1 >= capacity THEN 'full' ELSE 'open' END
+  WHERE id = ? AND status = 'open' AND booked_count < capacity` → 0 baris = 409 "Slot sudah penuh". Pelanggaran unik → 409.
+  Notifikasi tutor: nama siswa, mapel, topik, waktu (tanpa data privat).
+- Batal (siswa): sesi cancelled, kursi bebas (status kembali open), notifikasi tutor. Sesi lama tanpa slot: perilaku lama.
+- Bentrok TIDAK ditolak: peringatan merah sebelum memesan ("Bentrok dengan sesi Matematika, Rabu 15.00 WIB"), siswa boleh
+  lanjut + notifikasi "Jadwal bentrok"; label merah "Bentrok" (dihitung ulang tiap muat halaman, hilang sendiri) di kartu
+  Sesi Belajar, Jadwal Hari Ini/Minggu Ini, dan beranda.
+- Ganti jadwal (= TT-25): `POST /dashboard/sessions/{id}/reschedule` (slot_id): sesi slot aktif mendatang → slot lain tutor yang
+  sama, ada kursi, ≥ 3 jam, belum terdaftar; satu transaksi (kursi lama bebas, kursi baru atomik); notifikasi tutor.
+- Privasi: siswa hanya melihat "terisi X/Y"; tutor hanya nama siswa + detail sesi (Aturan no. 11, dites).
+- Tes: kapasitas 2 + tiga siswa → ketiga 409; daftar ganda → 409; UPDATE atomik 0 baris saat penuh; TES KONKUREN proses PHP
+  paralel (Symfony Process) ke SQLite sementara → tepat 2 sesi (laporkan jujur bila tidak stabil di Windows); batal membebaskan
+  kursi; ganti jadwal; bentrok ditandai lalu hilang; beda zona waktu. Tes lama yang diubah: `LearningSessionTest`,
+  `AuthenticationTest` (katalog mock), `DashboardSessionRenderTest`, `tests/js/dashboard.test.js`, `DashboardNavigationTest`,
+  `TutorRoleWorkflowTest` (availability).
+
+### Kalau pindah ke MySQL (hal khusus SQLite)
+- Index unik parsial (`… WHERE status IN (...)`) tidak didukung MySQL → pakai kolom generated, mis.
+  `active_slot_key = IF(status IN ('pending','confirmed'), CONCAT(slot_id,'-',student_id), NULL)` + UNIQUE.
+- SQLite menyimpan datetime sebagai teks tanpa zona; tetap simpan UTC dan set zona koneksi MySQL `+00:00`.
+- UPDATE atomik dengan `CASE` + kondisi `booked_count < capacity` aman di keduanya (MySQL InnoDB mengunci baris).
+- Migrasi `->after()` diabaikan SQLite (kolom ditambah di akhir); tidak masalah di MySQL.
+- `FileUserProvider`/LocalUserStore (users.json) tidak terkait DB, tetap sama.
+
+### Menunggu persetujuan pemilik
+1. Konversi data lama: kurangi 7 jam dari `starts_at` sesi lama (saat ini hanya id 2), dengan backup dulu.
+2. Revisi rencana di atas (cookie `tk_tz`, `booked_count` atomik, pratinjau di server, centang "Saya paham" untuk Admin).
 
 ## Cara kerja setiap langkah ROADMAP
 1. Saat diminta "kerjakan X.Y": baca kode terkait, tunjukkan rencana singkat (file diubah/dibuat, migrasi, route & role, tes, risiko), tunggu persetujuan.
