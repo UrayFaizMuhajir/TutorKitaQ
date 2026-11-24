@@ -59,10 +59,12 @@ class DashboardSessionRenderTest extends TestCase
         Auth::login(Auth::guard()->getProvider()->retrieveById($userId));
         $this->createSessionFor($userId, ['topic' => '[p[[l,']);
 
+        // Sejak ROADMAP 0.1 halaman Sesi tidak ada di menu tutor (menyusul di 3.3), jadi sesi lama
+        // akun ini tidak dirender; kerangka dashboard (menu profil, logout) tetap harus berfungsi.
         $html = $this->get('/dashboard')->assertOk()
             ->assertSee('<small class="profile-role-badge">Tutor</small>', false)
-            ->assertSee('data-session-card', false)
-            ->assertSee('[p[[l,', false)
+            ->assertDontSee('data-spa-page="sessions"', false)
+            ->assertDontSee('data-session-card', false)
             ->getContent();
 
         $this->assertSame(2, substr_count($html, 'data-profile-toggle'), 'Menu profil harus bisa dibuka dari topbar dan dari sidebar.');

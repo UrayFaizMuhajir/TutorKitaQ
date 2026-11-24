@@ -1,3 +1,10 @@
+@php
+    // Halaman SPA hanya dirender bila ada di menu role (App\Support\DashboardNavigation).
+    // Ini soal tampilan; hak akses data tetap dijaga di route/controller.
+    $visiblePages = $navigation['pages'] ?? [];
+    $isStudentView = ($navigation['role'] ?? 'student') === 'student';
+@endphp
+@if (in_array('tutors', $visiblePages, true))
 <section class="dashboard-page spa-page catalog-page" data-spa-page="tutors" hidden>
     <div class="catalog-heading"><h1>Katalog <em>Tutor</em></h1><p>Temukan tutor relawan yang sesuai dengan kebutuhan belajar kamu.</p></div>
     <form class="catalog-search-row" data-catalog-search-form>
@@ -27,10 +34,12 @@
     <nav class="catalog-pagination" aria-label="Halaman katalog tutor" data-catalog-pagination></nav>
     <dialog class="catalog-profile-dialog" data-catalog-profile-dialog aria-labelledby="catalog-profile-name"><button class="catalog-dialog-close" type="button" aria-label="Tutup" data-catalog-dialog-close>×</button><div data-catalog-profile-content></div></dialog>
 </section>
+@endif
 
 @php
     $canRequestSessions = ($user['role'] ?? 'student') === 'student';
 @endphp
+@if (in_array('sessions', $visiblePages, true))
 <section class="dashboard-page spa-page sessions-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="{{ $canRequestSessions ? '1' : '0' }}" data-store-url="{{ route('dashboard.sessions.store') }}" data-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => '__ID__']) }}" data-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => '__ID__']) }}" hidden>
     <div class="sessions-heading"><div><span class="section-kicker">RUANG BELAJARMU</span><h1>Sesi <em>Belajar</em></h1></div><span class="session-total"><strong>{{ $learning_sessions->count() }}</strong> sesi tercatat</span></div>
     <div class="sessions-layout">
@@ -43,7 +52,7 @@
                 <button type="button" role="tab" aria-selected="false" data-session-filter="pending"><x-icon name="document"/> Pengajuan Sesi</button>
                 @if ($canRequestSessions)<button class="session-new-button" type="button" data-session-dialog-open><x-icon name="plus"/> Ajukan Sesi Baru</button>@endif
             </nav>
-            <div class="session-list-heading"><div><h2 data-session-heading>Sesi Mendatang</h2><p data-session-description>Jadwal sesi belajar yang sudah dikonfirmasi atau menunggu konfirmasi.</p></div><span class="session-filter-count" aria-live="polite"><strong data-session-count>{{ $learning_sessions->count() }}</strong> sesi</span></div>
+            <div class="session-list-heading"><div><h2 data-session-heading>Semua Sesi</h2><p data-session-description>Semua sesi belajarmu: mendatang, selesai, dan dibatalkan.</p></div><span class="session-filter-count" aria-live="polite"><strong data-session-count>{{ $learning_sessions->count() }}</strong> sesi</span></div>
             <div class="session-list" data-session-list>
                 @foreach ($learning_sessions as $index => $session)
                     <article class="session-card" data-session-card data-session-status="{{ $session->display_status }}" data-session-start="{{ $session->starts_at->toIso8601String() }}" data-session-tutor="{{ $session->tutor_name }}" data-session-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => $session->id]) }}" data-session-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => $session->id]) }}" style="--session-delay: {{ min($index, 6) * 45 }}ms">
@@ -87,23 +96,28 @@
     @endif
     <dialog class="session-dialog session-detail-dialog" data-session-detail-dialog aria-labelledby="session-detail-title"><button class="session-dialog-close" type="button" aria-label="Tutup" data-session-detail-close>×</button><div data-session-detail-content><span class="section-kicker">DETAIL SESI BELAJAR</span><h2 id="session-detail-title">Memuat detail sesi</h2><p>Mohon tunggu sebentar.</p></div><div class="session-dialog-actions"><button class="button button-outline" type="button" data-session-detail-close>Tutup</button><button class="button button-danger" type="button" data-session-cancel hidden>Batalkan Sesi</button></div></dialog>
 </section>
+@endif
 
+@if (in_array('materials', $visiblePages, true))
 <section class="dashboard-page spa-page" data-spa-page="materials" hidden>
     @php
         $materials = $materials ?? collect();
         $materialSubjects = $materials->pluck('subject')->unique()->values();
         $mainMaterialSubjects = ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'];
         $extraMaterialSubjects = $materialSubjects->reject(fn ($subject) => in_array($subject, $mainMaterialSubjects, true))->values();
-        $showSubjectManager = request()->query('materials') === 'subjects';
+        // "Mata Pelajaranku" khusus siswa; tutor selalu melihat daftar materi.
+        $showSubjectManager = $isStudentView && request()->query('materials') === 'subjects';
     @endphp
     <div class="materials-heading"><div><h1>Materi <em>Pembelajaran</em></h1><p>Akses berbagai materi belajar dari tutor, mulai dari rangkuman, modul, video, hingga latihan soal.</p></div>@if ((auth()->user()->role ?? null) === 'tutor')<button type="button" class="button button-primary" data-material-create-open><x-icon name="plus"/> Tambah Materi</button>@endif</div>
     <div class="materials-layout">
         <div class="materials-primary">
             <section class="materials-hero" aria-label="Belajar lebih mudah"><div class="materials-hero-copy"><h2>Belajar Lebih Mudah<br> dengan Materi Lengkap</h2><p>Temukan materi sesuai mata pelajaran dan jenjang kelasmu, lalu mulai belajar sekarang!</p></div><div class="materials-hero-illustration" aria-hidden="true"><span class="hero-sun"></span><div class="hero-book hero-book-one"></div><div class="hero-book hero-book-two"></div><div class="hero-cap"><i></i></div><div class="hero-screen"><span>▶</span></div></div></section>
+            @if ($isStudentView)
             <nav class="materials-workspace-tabs" aria-label="Ruang materi dan mata pelajaran">
                 <button type="button" data-material-area="materials" class="{{ $showSubjectManager ? '' : 'is-active' }}" aria-pressed="{{ $showSubjectManager ? 'false' : 'true' }}"><x-icon name="book-open"/>Materi Pembelajaran</button>
                 <button type="button" data-material-area="subjects" class="{{ $showSubjectManager ? 'is-active' : '' }}" aria-pressed="{{ $showSubjectManager ? 'true' : 'false' }}"><x-icon name="grid"/>Mata Pelajaran <span data-subject-selected-count>{{ $student_subject_count }}</span></button>
             </nav>
+            @endif
             <div data-materials-panel @if ($showSubjectManager) hidden @endif>
             <nav class="materials-subject-nav" aria-label="Filter mata pelajaran" data-material-subjects>
                 <button class="is-active" type="button" data-material-subject="all"><x-icon name="grid"/>Semua Materi</button>
@@ -131,6 +145,7 @@
             <div class="materials-empty" data-material-filter-empty hidden>Materi tidak ditemukan. Coba ubah kata pencarian atau filternya.</div>
             <nav class="materials-pagination" data-material-pagination aria-label="Halaman materi"></nav>
             </div>
+            @if ($isStudentView)
             <section class="integrated-subjects-panel" data-integrated-subjects data-search-url="{{ route('subjects.catalog') }}" @if (! $showSubjectManager) hidden @endif aria-label="Kelola mata pelajaran">
                 <div class="integrated-subjects-heading"><div><span class="section-kicker">PILIH YANG INGIN KAMU PELAJARI</span><h2>Mata <em>Pelajaran</em></h2><p>Pilih pelajaran untuk mengatur materi yang ingin kamu pelajari.</p></div><strong data-subject-result-count>{{ $subject_catalog->count() }} pelajaran tersedia</strong></div>
                 <nav class="integrated-subject-tabs" aria-label="Katalog mata pelajaran" role="tablist">
@@ -168,6 +183,7 @@
                 </div>
                 <p class="integrated-subject-no-selection" data-subject-no-selection hidden>Belum ada mata pelajaran di daftar belajarmu. Tambahkan dari katalog untuk mulai belajar.</p>
             </section>
+            @endif
         </div>
         <aside class="materials-sidebar">
             <section class="materials-progress-card"><div class="materials-side-heading"><h2>Progress Belajar</h2><button type="button" data-material-detail-progress>Lihat Detail <x-icon name="arrow-right"/></button></div><div class="materials-progress-content"><div class="materials-progress-ring" data-progress-ring style="--progress:{{ $material_progress_percent ?? 0 }}%"><strong>{{ $material_progress_percent ?? 0 }}%</strong></div><div class="materials-progress-summary"><p>{{ $completed_material_count ?? 0 }} dari {{ $material_count ?? 0 }} materi selesai</p><div class="materials-progress-track"><span data-progress-bar style="width:{{ $material_progress_percent ?? 0 }}%"></span></div></div></div><p class="materials-progress-empty" data-material-progress-empty @if (($completed_material_count ?? 0) > 0) hidden @endif>Mulai pelajari materi dan tandai selesai untuk melihat progresmu.</p></section>
@@ -178,9 +194,12 @@
     <dialog class="material-detail-dialog" data-material-dialog aria-labelledby="material-detail-title"><button type="button" class="material-dialog-close" data-material-close aria-label="Tutup">×</button><div data-material-detail><p>Memuat detail materi…</p></div></dialog>
     @if (session('status'))<span hidden data-toast-on-load>{{ session('status') }}</span>@endif
 </section>
+@endif
 
+@if ($isStudentView)
 <dialog class="subject-confirm-dialog" data-subject-confirm-dialog aria-labelledby="subject-confirm-title"><form method="dialog" class="subject-confirm-dialog-card"><span class="subject-confirm-icon"><x-icon name="trash"/></span><h2 id="subject-confirm-title">Hapus dari Mata Pelajaranku?</h2><p>Apakah kamu yakin ingin menghapus <strong data-subject-confirm-name></strong> dari daftar mata pelajaranmu? Materi pembelajaran akan tetap tersedia.</p><div class="subject-confirm-actions"><button class="button button-outline" value="cancel" data-subject-confirm-cancel>Batal</button><button class="button button-danger" type="button" data-subject-confirm-accept>Hapus dari Daftar</button></div></form></dialog>
 <dialog class="subject-confirm-dialog" data-subject-edit-dialog aria-labelledby="subject-edit-title"><form class="subject-confirm-dialog-card" data-subject-edit-form><span class="subject-confirm-icon"><x-icon name="edit"/></span><h2 id="subject-edit-title">Ubah mata pelajaran</h2><label>Mata Pelajaran<select name="subject_id" data-subject-edit-subject required>@foreach ($subject_catalog as $subject)<option value="{{ $subject->id }}" data-level-map="{{ $subject->gradeLevels->map(fn ($level) => $level->id.':'.$level->name)->join('|') }}">{{ $subject->name }}</option>@endforeach</select></label><label>Jenjang Pendidikan<select name="grade_level_id" data-subject-edit-level required></select></label><div class="subject-confirm-actions"><button type="button" class="button button-outline" data-subject-edit-cancel>Batal</button><button type="submit" class="button button-primary">Simpan Perubahan</button></div></form></dialog>
+@endif
 @if ((auth()->user()->role ?? null) === 'tutor')
     <dialog class="material-management-dialog" data-material-form-dialog aria-labelledby="material-form-title"><button type="button" class="material-management-close" data-material-form-close aria-label="Tutup">×</button><form data-material-form action="{{ route('dashboard.materials.store') }}" method="post" enctype="multipart/form-data">@csrf<input type="hidden" name="_method" data-material-method-field disabled><h2 id="material-form-title" data-material-form-title>Tambah Materi</h2><p class="material-management-lead">Materi hanya dapat diubah oleh tutor pembuatnya.</p><label>Judul Materi<input name="title" maxlength="180" required></label><div class="material-management-two"><label>Mata Pelajaran<select name="subject" required>@foreach ($subject_catalog as $subject)<option value="{{ $subject->name }}">{{ $subject->name }}</option>@endforeach</select></label><label>Jenjang<select name="grade_level" required><option>SD</option><option>SMP</option><option>SMA/SMK</option><option>Perguruan Tinggi</option></select></label></div><div class="material-management-two"><label>Jenis Materi<select name="material_type" data-material-form-type required><option value="module_pdf">Modul (PDF)</option><option value="material_pdf">Materi (PDF)</option><option value="video">Video</option><option value="exercise">Latihan Soal</option><option value="summary">Rangkuman</option></select></label><label>Topik<input name="topic" maxlength="120"></label></div><label>Deskripsi<textarea name="description" rows="4" maxlength="5000" required></textarea></label><label data-material-file-label>File PDF <input type="file" name="file" accept=".pdf,application/pdf" data-material-file><small data-material-file-help>PDF maksimal 20 MB.</small></label><label data-material-video-label hidden>Tautan Video<input type="url" name="video_url" placeholder="https://..." maxlength="2048"></label><label>Status Publikasi<select name="is_published"><option value="1">Terbitkan</option><option value="0">Simpan sebagai draf</option></select></label><p class="material-management-error" data-material-form-error role="alert" hidden></p><div class="material-management-actions"><button type="button" class="button button-outline" data-material-form-close>Batal</button><button type="submit" class="button button-primary" data-material-form-submit>Simpan Materi</button></div></form></dialog>
     <dialog class="subject-confirm-dialog" data-material-delete-dialog aria-labelledby="material-delete-title"><form method="dialog" class="subject-confirm-dialog-card"><span class="subject-confirm-icon"><x-icon name="trash"/></span><h2 id="material-delete-title">Arsipkan materi?</h2><p>Materi ini tidak akan muncul lagi di katalog. Bookmark dan progress belajar yang sudah tercatat tetap disimpan.</p><div class="subject-confirm-actions"><button class="button button-outline" value="cancel">Batal</button><button class="button button-danger" type="button" data-material-delete-accept>Arsipkan Materi</button></div></form></dialog>
@@ -252,6 +271,7 @@
 <dialog class="role-dialog" data-admin-users-dialog aria-labelledby="admin-users-title"><button type="button" class="role-dialog-close" aria-label="Tutup" data-role-dialog-close>×</button><span class="section-kicker">PANEL ADMIN</span><h2 id="admin-users-title">Pengelolaan Pengguna</h2><p class="role-dialog-lead">Daftar akun aplikasi dan role aktifnya.</p><div class="admin-user-list">@foreach ($admin_user_rows as $adminUser)<div><strong>{{ $adminUser['name'] }}</strong><span>{{ $adminUser['contact'] }}</span><em>{{ ucfirst($adminUser['role']) }}</em></div>@endforeach</div><small>Promosi admin hanya tersedia lewat perintah Artisan interaktif yang meminta konfirmasi.</small></dialog>
 @endif
 
+@if (in_array('assignments', $visiblePages, true))
 <section class="dashboard-page spa-page" data-spa-page="assignments" hidden>
     @php
         $averageScore = $assignment_average_score;
@@ -302,7 +322,9 @@
     </div>
     <dialog class="assignment-detail-dialog" data-assignment-dialog aria-labelledby="assignment-detail-title"><button type="button" class="assignment-dialog-close" data-assignment-close aria-label="Tutup">×</button><div data-assignment-detail><p>Memuat detail tugas…</p></div><form class="assignment-submit-form" data-assignment-submit-form hidden enctype="multipart/form-data"><label data-answer-text-wrap>Jawaban<textarea name="answer_text" rows="6" maxlength="20000" placeholder="Tulis jawabanmu di sini…"></textarea></label><label data-answer-file-wrap>Lampirkan file <input type="file" name="answer_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg"><small data-answer-file-help></small></label><p class="assignment-submit-error" data-assignment-error role="alert" hidden></p><button type="submit" class="button button-primary" data-assignment-submit-button>Kumpulkan Tugas <x-icon name="arrow-right"/></button></form></dialog>
 </section>
+@endif
 
+@if (in_array('notifications', $visiblePages, true))
 <section class="dashboard-page spa-page" data-spa-page="notifications" hidden>
     <div class="notification-heading"><h1>Noti<span>fikasi</span></h1><p>Dapatkan informasi terbaru seputar sesi belajar, tugas, dan aktivitas belajarmu.</p></div>
     <div class="notification-layout">
@@ -347,7 +369,9 @@
         </aside>
     </div>
 </section>
+@endif
 
+@if (in_array('history', $visiblePages, true))
 <section class="dashboard-page spa-page" data-spa-page="history" hidden>
     <div class="history-heading"><div><h1>Riwayat <em>Sesi</em></h1><p>Lihat kembali seluruh sesi belajar yang telah kamu ikuti bersama tutor.</p></div></div>
     <div class="history-layout">
@@ -396,3 +420,4 @@
     </div>
     <dialog class="history-detail-dialog" data-history-detail-dialog aria-labelledby="history-detail-title"><button type="button" class="history-dialog-close" aria-label="Tutup" data-history-dialog-close>×</button><div data-history-detail-content><p>Memuat detail sesi…</p></div></dialog>
 </section>
+@endif

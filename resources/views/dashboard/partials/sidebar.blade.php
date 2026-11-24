@@ -1,13 +1,21 @@
 <aside class="sidebar" id="main-sidebar" aria-label="Navigasi utama">
     <div class="sidebar-brand"><a href="{{ route('dashboard') }}" aria-label="TutorKita Dashboard"><img src="{{ asset('assets/tutorkita/tutorkita-logo.svg') }}" alt="TutorKita" width="150" height="50"></a><button class="icon-button sidebar-close" type="button" aria-label="Tutup navigasi" data-sidebar-close><x-icon name="x" /></button></div>
-    <div class="sidebar-label">MENU BELAJAR</div>
-    @php($dashboardSpa = request()->routeIs('dashboard'))
-    <nav class="sidebar-nav" aria-label="Menu belajar" @if ($dashboardSpa) data-spa-nav @endif>
-        @foreach ([['dashboard', 'home', 'Beranda'], ['tutors', 'grid', 'Katalog Tutor'], ['sessions', 'calendar', 'Sesi Belajar'], ['materials', 'book', 'Materi Pembelajaran'], ['assignments', 'check', 'Tugas & Penilaian'], ['notifications', 'bell', 'Notifikasi'], ['history', 'clock', 'Riwayat Sesi']] as [$page, $icon, $label])
-            @if ($dashboardSpa)
-                <button class="nav-link {{ $page === 'dashboard' ? 'is-current' : '' }}" type="button" data-page-link="{{ $page }}" @if ($page === 'dashboard') aria-current="page" @endif><x-icon :name="$icon" /><span>{{ $label }}</span>@if ($page === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</button>
+    @php
+        $dashboardSpa = request()->routeIs('dashboard');
+        $navigation = $navigation ?? \App\Support\DashboardNavigation::forRole($user['role'] ?? null);
+    @endphp
+    <div class="sidebar-label">{{ $navigation['label'] }}</div>
+    {{-- Menu per role berasal dari App\Support\DashboardNavigation (satu sumber definisi). --}}
+    <nav class="sidebar-nav" aria-label="{{ $navigation['aria_label'] }}" data-sidebar-nav data-role="{{ $navigation['role'] }}" @if ($dashboardSpa) data-spa-nav @endif>
+        @foreach ($navigation['items'] as $item)
+            @if (isset($item['page']))
+                @if ($dashboardSpa)
+                    <button class="nav-link {{ $item['page'] === 'dashboard' ? 'is-current' : '' }}" type="button" data-page-link="{{ $item['page'] }}" data-page-title="{{ $item['label'] }}" @if ($item['page'] === 'dashboard') aria-current="page" @endif><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if ($item['page'] === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</button>
+                @else
+                    <a class="nav-link" href="{{ route('dashboard') }}#{{ $item['page'] }}"><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if ($item['page'] === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</a>
+                @endif
             @else
-                <a class="nav-link" href="{{ route('dashboard') }}#{{ $page }}"><x-icon :name="$icon" /><span>{{ $label }}</span>@if ($page === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</a>
+                <button class="nav-link nav-action" type="button" data-open-{{ $item['action'] }} aria-haspopup="dialog"><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if (! empty($item['count']))<span class="profile-menu-count nav-count" aria-label="{{ $item['count'] }} menunggu">{{ $item['count'] }}</span>@endif</button>
             @endif
         @endforeach
     </nav>

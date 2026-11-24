@@ -24,7 +24,13 @@ if (dashboard) {
     let pendingSubjectRemoveForm = null;
     const subjectFilter = document.querySelector('#tutor-subject-filter');
     const levelFilter = document.querySelector('#subject-level-filter');
+    // Judul halaman diambil dari menu sidebar yang dirender server (App\Support\DashboardNavigation);
+    // daftar di bawah hanya cadangan bila atribut judul tidak ada.
     const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi' };
+    document.querySelectorAll('[data-sidebar-nav] [data-page-link][data-page-title]').forEach((link) => { pageTitles[link.dataset.pageLink] = link.dataset.pageTitle; });
+    // Halaman yang tidak ada di menu role tidak dirender, jadi tautan/hash ke sana dialihkan ke Beranda.
+    const isAvailablePage = (page) => Boolean(pageTitles[page]) && Boolean(document.querySelector(`[data-spa-page="${page}"]`));
+    const defaultSearchPlaceholder = searchInput?.dataset.defaultPlaceholder || 'Cari jadwal atau tutor...';
     let activeScheduleFilter = 'all';
     const catalogPage = document.querySelector('[data-spa-page="tutors"]');
     const catalogSearch = document.querySelector('[data-catalog-search]');
@@ -38,9 +44,9 @@ if (dashboard) {
     const catalogPageSize = 8;
 
     const showPage = (page, updateHash = true) => {
-        if (!pageTitles[page]) page = 'dashboard';
+        if (!isAvailablePage(page)) page = 'dashboard';
         document.querySelectorAll('[data-spa-page]').forEach((section) => { section.hidden = section.dataset.spaPage !== page; });
-        document.querySelectorAll('[data-page-link]').forEach((link) => {
+        document.querySelectorAll('.nav-link[data-page-link]').forEach((link) => {
             const active = link.dataset.pageLink === page;
             link.classList.toggle('is-current', active);
             if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
@@ -55,7 +61,7 @@ if (dashboard) {
         document.body.classList.toggle('notifications-active', page === 'notifications');
         document.body.classList.toggle('history-active', page === 'history');
         if (searchInput) {
-            searchInput.placeholder = page === 'tutors' ? 'Cari tutor, mata pelajaran, atau topik......' : page === 'materials' ? 'Cari materi, mata pelajaran, atau topik...' : page === 'assignments' ? 'Cari tugas atau mata pelajaran...' : page === 'notifications' ? 'Cari notifikasi...' : page === 'history' ? 'Cari sesi, tutor, atau mata pelajaran...' : 'Cari jadwal atau tutor...';
+            searchInput.placeholder = page === 'tutors' ? 'Cari tutor, mata pelajaran, atau topik......' : page === 'materials' ? 'Cari materi, mata pelajaran, atau topik...' : page === 'assignments' ? 'Cari tugas atau mata pelajaran...' : page === 'notifications' ? 'Cari notifikasi...' : page === 'history' ? 'Cari sesi, tutor, atau mata pelajaran...' : defaultSearchPlaceholder;
             document.querySelector('[data-search-label]')?.replaceChildren(document.createTextNode(searchInput.placeholder));
         }
         if (page === 'tutors' && searchInput && catalogSearch) searchInput.value = catalogSearch.value;
@@ -105,8 +111,26 @@ if (dashboard) {
         }
         if (except !== profileMenu) {
             profileMenu.hidden = true;
+            anchorProfileMenu(null);
             document.querySelectorAll('[data-profile-toggle]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
         }
+    };
+
+    // Menu profil hanya satu (#profile-menu, di topbar). Saat dibuka dari tombol ⌄ di sidebar pada layar
+    // lebar, menu ditempatkan tepat di atas tombol itu. Di layar sempit sidebar adalah laci yang ditutup
+    // dulu, jadi menu tetap muncul di kanan atas dekat avatar topbar.
+    const anchorProfileMenu = (trigger) => {
+        const anchored = Boolean(trigger?.closest('.sidebar')) && window.matchMedia('(min-width: 961px)').matches;
+        profileMenu.classList.toggle('is-sidebar-anchored', anchored);
+        document.body.classList.toggle('profile-menu-anchored', anchored);
+        if (!anchored) {
+            profileMenu.style.removeProperty('--profile-menu-left');
+            profileMenu.style.removeProperty('--profile-menu-bottom');
+            return;
+        }
+        const rect = trigger.getBoundingClientRect();
+        profileMenu.style.setProperty('--profile-menu-left', `${Math.max(8, Math.round(rect.left))}px`);
+        profileMenu.style.setProperty('--profile-menu-bottom', `${Math.max(8, Math.round(window.innerHeight - rect.top + 10))}px`);
     };
 
     if (spaEnabled) showPage(location.hash.slice(1) || 'dashboard', false);
@@ -162,13 +186,26 @@ if (dashboard) {
         event.currentTarget.setAttribute('aria-expanded', String(!notificationMenu.hidden));
     });
 
+    let profileMenuTrigger = null;
     document.querySelectorAll('[data-profile-toggle]').forEach((button) => button.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (event.currentTarget.closest('.sidebar')) setSidebar(false);
+        const trigger = event.currentTarget;
+        if (trigger.closest('.sidebar')) setSidebar(false);
         closeMenus(profileMenu);
-        profileMenu.hidden = !profileMenu.hidden;
-        document.querySelectorAll('[data-profile-toggle]').forEach((trigger) => trigger.setAttribute('aria-expanded', String(!profileMenu.hidden)));
+        // Klik tombol yang sama menutup menu; klik tombol lain memindahkan menu ke dekat tombol itu.
+        const open = profileMenu.hidden || profileMenuTrigger !== trigger;
+        profileMenu.hidden = !open;
+        profileMenuTrigger = open ? trigger : null;
+        anchorProfileMenu(open ? trigger : null);
+        document.querySelectorAll('[data-profile-toggle]').forEach((item) => item.setAttribute('aria-expanded', String(open && item === trigger)));
     }));
+    // Saat ukuran jendela berubah (termasuk bilah alamat browser yang muncul/hilang), menu yang menempel
+    // di sidebar dipindah mengikuti tombolnya; bila layar menyempit (sidebar jadi laci), menu ditutup.
+    window.addEventListener('resize', () => {
+        if (profileMenu.hidden || !profileMenu.classList.contains('is-sidebar-anchored')) return;
+        if (profileMenuTrigger && window.matchMedia('(min-width: 961px)').matches) anchorProfileMenu(profileMenuTrigger);
+        else closeMenus();
+    });
 
     document.querySelector('[data-mark-read]')?.addEventListener('click', () => {
         document.querySelectorAll('.notification-item.is-unread').forEach((item) => item.classList.remove('is-unread'));
@@ -205,12 +242,18 @@ if (dashboard) {
     const adminUsersDialog = document.querySelector('[data-admin-users-dialog]');
     const openRoleDialog = (dialog) => {
         closeMenus();
+        setSidebar(false);
         if (dialog && !dialog.open) dialog.showModal();
     };
-    document.querySelector('[data-open-profile]')?.addEventListener('click', () => openRoleDialog(profileDialog));
-    document.querySelector('[data-open-tutor-application]')?.addEventListener('click', () => openRoleDialog(tutorApplicationDialog));
-    document.querySelector('[data-open-admin-verification]')?.addEventListener('click', () => openRoleDialog(adminVerificationDialog));
-    document.querySelector('[data-open-admin-users]')?.addEventListener('click', () => openRoleDialog(adminUsersDialog));
+    // Pemicu bisa lebih dari satu (mis. aksi admin di sidebar dan di beranda admin).
+    [
+        ['[data-open-profile]', profileDialog],
+        ['[data-open-tutor-application]', tutorApplicationDialog],
+        ['[data-open-admin-verification]', adminVerificationDialog],
+        ['[data-open-admin-users]', adminUsersDialog],
+    ].forEach(([selector, dialog]) => {
+        document.querySelectorAll(selector).forEach((button) => button.addEventListener('click', () => openRoleDialog(dialog)));
+    });
     document.querySelectorAll('[data-role-dialog-close]').forEach((button) => button.addEventListener('click', () => button.closest('dialog')?.close()));
 
     const applicationForm = document.querySelector('[data-tutor-application-form]');
@@ -263,7 +306,7 @@ if (dashboard) {
         if (button) { button.disabled = true; button.textContent = 'Memproses…'; }
     }));
 
-    if (subjectManagementPage) {
+    if (subjectManagementPage) safeInit('mata pelajaran', () => {
         const materialsArea = document.querySelector('[data-materials-panel]');
         const materialsViewTabs = [...document.querySelectorAll('[data-material-area]')];
         const subjectCards = [...subjectManagementPage.querySelectorAll('[data-subject-card]')];
@@ -321,11 +364,14 @@ if (dashboard) {
                 tab.classList.toggle('is-active', active);
                 tab.setAttribute('aria-pressed', String(active));
             });
-            if (subjectsOpen && searchInput && subjectSearch) {
+            // Kotak cari topbar hanya disesuaikan bila halaman Materi sedang tampil
+            // (saat dimuat di Beranda, placeholder Beranda tidak boleh tertimpa).
+            const materialsVisible = document.body.classList.contains('materials-active');
+            if (materialsVisible && subjectsOpen && searchInput && subjectSearch) {
                 searchInput.placeholder = 'Cari mata pelajaran...';
                 searchInput.value = subjectSearch.value;
             }
-            if (!subjectsOpen && searchInput) {
+            if (materialsVisible && !subjectsOpen && searchInput) {
                 searchInput.placeholder = 'Cari materi, mata pelajaran, atau topik...';
                 searchInput.value = document.querySelector('[data-material-search]')?.value ?? '';
             }
@@ -454,7 +500,7 @@ if (dashboard) {
         subjectConfirmDialog?.addEventListener('close', () => { pendingSubjectRemoveForm = null; });
         changeMaterialsArea(new URLSearchParams(location.search).get('materials') === 'subjects' ? 'subjects' : 'materials', false);
         drawSubjectCatalog();
-    }
+    });
 
     const dismissToast = (toast) => {
         if (!toast.isConnected) return;
@@ -463,7 +509,7 @@ if (dashboard) {
     };
 
     const notificationSection = document.querySelector('[data-spa-page="notifications"]');
-    if (notificationSection) {
+    if (notificationSection) safeInit('notifikasi', () => {
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
         const notificationCards = [...notificationSection.querySelectorAll('[data-notification-card]')];
         const filterButtons = [...notificationSection.querySelectorAll('[data-notification-filter]')];
@@ -547,7 +593,7 @@ if (dashboard) {
                     refreshUnread(data.unread_count);
                 }
                 const page = url.startsWith('#') ? url.slice(1) : 'notifications';
-                if (pageTitles[page]) showPage(page); else showPage('notifications');
+                showPage(isAvailablePage(page) ? page : 'notifications');
             } catch (error) { showToast(error.message); }
         }));
         document.querySelector('[data-open-notifications]')?.addEventListener('click', () => showPage('notifications'));
@@ -562,10 +608,10 @@ if (dashboard) {
             } catch (error) { preference.checked = !enabled; showToast(error.message); }
             finally { preference.disabled = false; }
         });
-    }
+    });
 
     const materialGrid = document.querySelector('[data-material-grid]');
-    if (materialGrid) {
+    if (materialGrid) safeInit('materi', () => {
         const materialCards = [...materialGrid.querySelectorAll('[data-material-card]')];
         const materialSearch = document.querySelector('[data-material-search]');
         const materialGrade = document.querySelector('[data-material-grade]');
@@ -857,7 +903,7 @@ if (dashboard) {
         document.querySelector('[data-material-close]')?.addEventListener('click', () => materialDialog.close());
         document.querySelector('[data-material-detail-progress]')?.addEventListener('click', () => document.querySelector('.materials-progress-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
         drawMaterials();
-    }
+    });
 
     const assignmentPage = document.querySelector('[data-spa-page="assignments"]');
     const assignmentCards = [...(assignmentPage?.querySelectorAll('[data-assignment-card]') ?? [])];
@@ -1125,7 +1171,7 @@ if (dashboard) {
     const sessionDetailContent = sessionPage?.querySelector('[data-session-detail-content]');
     const sessionCancelButton = sessionPage?.querySelector('[data-session-cancel]');
     const sessionHeadings = {
-        all: ['Sesi Mendatang', 'Jadwal sesi belajar yang sudah dikonfirmasi atau menunggu konfirmasi.'],
+        all: ['Semua Sesi', 'Semua sesi belajarmu: mendatang, selesai, dan dibatalkan.'],
         upcoming: ['Sesi Mendatang', 'Jadwal sesi belajar yang sudah dikonfirmasi atau menunggu konfirmasi.'],
         completed: ['Sesi Selesai', 'Lihat kembali sesi belajar yang sudah kamu jalani.'],
         cancelled: ['Sesi Dibatalkan', 'Riwayat sesi yang dibatalkan.'],
@@ -1448,18 +1494,23 @@ if (dashboard) {
         const count = document.querySelector('.tutor-count');
         if (count) count.textContent = `${visibleTutors} tutor`;
 
-        const selectedLevel = levelFilter?.value ?? 'all';
-        let visibleSubjects = 0;
-        document.querySelectorAll('[data-subject-card]').forEach((card) => {
-            const levels = card.dataset.level.split(',');
-            const matchesLevel = selectedLevel === 'all' || levels.includes(selectedLevel);
-            const matchesSearch = !query || card.dataset.searchable.includes(query);
-            const visible = matchesLevel && matchesSearch;
-            card.hidden = !visible;
-            if (visible) visibleSubjects += 1;
-        });
-        const subjectEmpty = document.querySelector('[data-subject-empty]');
-        if (subjectEmpty) subjectEmpty.hidden = visibleSubjects > 0;
+        // Hanya kartu mapel versi lama yang punya data-level. Kartu "Mata Pelajaranku" (data-levels)
+        // difilter oleh modulnya sendiri, jadi blok ini dilewati agar tidak error/menimpa pesan kosongnya.
+        const legacySubjectCards = [...document.querySelectorAll('[data-subject-card][data-level]')];
+        if (legacySubjectCards.length) {
+            const selectedLevel = levelFilter?.value ?? 'all';
+            let visibleSubjects = 0;
+            legacySubjectCards.forEach((card) => {
+                const levels = card.dataset.level.split(',');
+                const matchesLevel = selectedLevel === 'all' || levels.includes(selectedLevel);
+                const matchesSearch = !query || (card.dataset.searchable || '').includes(query);
+                const visible = matchesLevel && matchesSearch;
+                card.hidden = !visible;
+                if (visible) visibleSubjects += 1;
+            });
+            const subjectEmpty = document.querySelector('[data-subject-empty]');
+            if (subjectEmpty) subjectEmpty.hidden = visibleSubjects > 0;
+        }
     };
 
     document.querySelectorAll('[data-schedule-filter]').forEach((tab) => tab.addEventListener('click', () => {

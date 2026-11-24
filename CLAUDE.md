@@ -54,7 +54,11 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   - 34 route dan 11 migrasi (semua Ran) sama dengan audit 2026-11-16; status ROADMAP di bawah masih berlaku.
     Semua butir "Masalah yang diketahui" masih terbukti di kode.
   - Daftar kartu Jira Sprint 1 dicatat di bagian "Kartu Jira" di bawah, beserta status menurut kode.
-- Langkah berikutnya: ROADMAP 0.1 (tunjukkan rencana dulu, tunggu persetujuan).
+- ROADMAP 0.1 dikerjakan dan di-commit 2026-11-24 ("Dashboard: tampilan menu dan beranda per role (belum diuji browser)").
+  **UJI BROWSER 0.1 MASIH TERTUNDA** — pemilik akan menguji dengan daftar cek 3 akun (admin/tutor/siswa, tombol ⌄,
+  tab "Semua Sesi"). Bila ada temuan, perbaiki di commit terpisah. Keputusan pemilik: menu Tutor = Beranda, Materi,
+  Notifikasi (Sesi/Tugas ditambah di 3.3/4.1); aksi Admin hanya di sidebar; TT-25 ditunda.
+- Langkah berikutnya: fitur pilih role saat daftar + verifikasi tutor (bagian ROADMAP 1.2; TT-4, TT-6) — rencana dulu.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -79,7 +83,9 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 
 ### Tahap 0: Fondasi
-- 0.1 Tampilan per role (sidebar, beranda, menu; satu sumber definisi menu per role) — **Belum** (hanya menu profil yang beda).
+- 0.1 Tampilan per role (sidebar, beranda, menu; satu sumber definisi menu per role) — **Selesai, di-commit, uji browser tertunda**:
+  `App\Support\DashboardNavigation` = satu sumber menu; `dashboard/home/{student,tutor,admin}.blade.php`; halaman SPA di luar
+  menu role tidak dirender (bukan pengaman data — itu 0.2); tes `DashboardNavigationTest` + `tests/js/dashboard-roles.test.js`.
 - 0.2 Pengecekan role via middleware `role:` di route sesi/materi/tugas/mapel + tes diizinkan/ditolak — **Sebagian** (pengajuan tutor, keputusan admin, dan pengajuan/pembatalan sesi `role:student` + tes; materi/tugas/mapel belum).
 - 0.3 Keamanan login: pesan error seragam + rate limit (mis. 5/menit per kontak+IP) — **Belum**.
 
@@ -157,8 +163,9 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 - Status sesi `completed` dihitung otomatis dari waktu, bukan ditandai tutor — ROADMAP 3.4.
 - Mapel/jenjang di `learning_materials` dan `learning_sessions` disimpan sebagai teks, bukan FK; materi punya jenjang
   "Perguruan Tinggi" yang tidak ada di `grade_levels` — ROADMAP 2.3/3.2.
-- Sidebar belum menyesuaikan role; route materi/tugas/mapel belum memakai `role:` (sesi sudah) — ROADMAP 0.1/0.2.
-- Tombol ⌄ sidebar membuka menu profil yang posisinya di kanan atas (topbar), bukan di dekat tombolnya — ROADMAP 0.1.
+- Route materi/tugas/mapel belum memakai `role:` (sesi sudah) — ROADMAP 0.2. (Sidebar per role & posisi menu ⌄ sudah di 0.1.)
+- Kotak cari topbar di Beranda Tutor/Admin belum punya isi untuk difilter (hanya berguna di halaman Materi/Notifikasi).
+- jsdom tidak punya `innerText`; tes JS yang memicu pencarian perlu polyfill (lihat `tests/js/dashboard-roles.test.js`).
 - Halaman Riwayat Sesi: kolom kanan menumpuk di atas hero/statistik pada lebar ±1440px (sudah ada sebelum 2026-11-18).
 - `npm audit`: advisory ReDoS `picomatch` (high, hanya dev tooling Vite/vitest); perbaikannya butuh `--force` (breaking).
 - Blade: jangan campur `@php(...)` inline dengan blok `@php … @endphp` di file yang sama (salah parse →
@@ -166,7 +173,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 - Tes yang mengubah role lewat `DB::table('user_roles')` harus memanggil `Auth::logout()` lalu
   `Auth::login(Auth::guard()->getProvider()->retrieveById($id))`; tanpa itu user lama (role lama) tetap di-cache.
 - `AssignmentController::create` menerima student_id siapa pun — ROADMAP 4.1.
-- Query N+1 di daftar pengguna admin; `FileUserProvider` query role tiap request — ROADMAP 1.4.
+- `FileUserProvider` query role tiap request — ROADMAP 1.4. (N+1 role di daftar pengguna admin sudah jadi satu query di 0.1.)
 - Kode mati: `SubjectsMockData`, `welcome.blade.php`, `components/subject-card.blade.php`, file `[` di root — ROADMAP 6.2.
 - `FOR INFO.md` dan `README.md` usang — ROADMAP 6.2.
 - Riwayat git masih memuat `database/recovery-20261110-115933-users.json` (email + hash); file sudah dihapus dari

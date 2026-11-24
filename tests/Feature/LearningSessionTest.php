@@ -162,9 +162,10 @@ class LearningSessionTest extends TestCase
             $this->assertDatabaseHas('learning_sessions', ['id' => $session->id, 'status' => 'pending']);
 
             $this->getJson(route('dashboard.sessions.show', $session->id))->assertOk();
+            // Sejak ROADMAP 0.1 halaman Sesi hanya dirender untuk Siswa.
             $this->get('/dashboard')->assertOk()
-                ->assertSee('data-can-manage-sessions="0"', false)
-                ->assertSee('data-session-card', false)
+                ->assertDontSee('data-spa-page="sessions"', false)
+                ->assertDontSee('data-session-card', false)
                 ->assertDontSee('data-session-dialog-open', false)
                 ->assertDontSee('data-session-create-form', false);
 

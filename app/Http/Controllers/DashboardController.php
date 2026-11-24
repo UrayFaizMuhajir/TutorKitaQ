@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Support\DashboardMockData;
+use App\Support\DashboardNavigation;
+use App\Models\AssignmentSubmission;
+use App\Models\LearningMaterial;
 use App\Models\LearningSession;
+use App\Models\StudentAssignment;
 use App\Support\LearningMaterialsDashboardData;
 use App\Support\AssignmentDashboardData;
 use App\Support\NotificationCenterData;
@@ -41,6 +45,8 @@ class DashboardController extends Controller
             'avatar_url' => $authenticatedUser->avatar_path ? route('dashboard.profile.photo', $authenticatedUser->getAuthIdentifier()) : null,
         ];
 
+        $navigation = DashboardNavigation::forRole($dashboardData['user']['role']);
+
         $dashboardData['tutor_profile'] = TutorProfile::query()->with('subjects')->where('user_id', (string) $authenticatedUser->getAuthIdentifier())->first();
         $profileAvatar = $authenticatedUser->avatar_path ?? $dashboardData['tutor_profile']?->avatar_path;
         $dashboardData['user']['avatar_url'] = $profileAvatar ? route('dashboard.profile.photo', $authenticatedUser->getAuthIdentifier()) : null;
@@ -59,8 +65,10 @@ class DashboardController extends Controller
 
                 return $application;
             });
-            $dashboardData['admin_user_rows'] = collect($users->all())->map(function (array $record): array {
-                $role = DB::table('user_roles')->where('user_id', (string) ($record['id'] ?? ''))->value('role') ?? ($record['role'] ?? 'student');
+            // Role semua akun diambil dengan satu query (sebelumnya satu query per akun).
+            $rolesByUser = DB::table('user_roles')->pluck('role', 'user_id');
+            $dashboardData['admin_user_rows'] = collect($users->all())->map(function (array $record) use ($rolesByUser): array {
+                $role = $rolesByUser[(string) ($record['id'] ?? '')] ?? ($record['role'] ?? 'student');
 
                 return [
                     'id' => (string) ($record['id'] ?? ''), 'name' => (string) ($record['name'] ?? 'Pengguna'),
@@ -196,10 +204,65 @@ class DashboardController extends Controller
         $dashboardData += AssignmentDashboardData::make($authenticatedUser);
         $dashboardData = array_replace($dashboardData, NotificationCenterData::make($authenticatedUser));
 
+        $dashboardData['tutor_home'] = $navigation['role'] === 'tutor'
+            ? $this->tutorHome((string) $authenticatedUser->getAuthIdentifier())
+            : null;
+        $dashboardData['admin_home'] = $navigation['role'] === 'admin'
+            ? $this->adminHome($dashboardData['pending_tutor_applications'], $dashboardData['admin_user_rows'])
+            : null;
+
+        $navigation['items'] = array_map(fn (array $item): array => $item + [
+            'count' => ($item['action'] ?? null) === 'admin-verification' ? $dashboardData['pending_tutor_application_count'] : null,
+        ], $navigation['items']);
+        $dashboardData['navigation'] = $navigation;
+
         return view('dashboard.index', $dashboardData + [
             'active_nav' => 'dashboard',
             'page_title' => 'Dashboard',
-            'search_placeholder' => 'Cari jadwal atau tutor...',
+            'search_placeholder' => $navigation['search_placeholder'],
         ]);
+    }
+
+    /** Ringkasan beranda tutor: hanya data milik tutor yang sedang login. */
+    private function tutorHome(string $tutorId): array
+    {
+        $ownMaterials = fn () => LearningMaterial::query()->where('created_by', $tutorId);
+        $publishedCount = $ownMaterials()->where('is_published', true)->count();
+        $draftCount = $ownMaterials()->where('is_published', false)->count();
+        $assignmentCount = StudentAssignment::query()->where('tutor_id', $tutorId)->count();
+        $ungradedCount = AssignmentSubmission::query()
+            ->whereNotNull('submitted_at')
+            ->whereNull('score')
+            ->whereHas('assignment', fn ($query) => $query->where('tutor_id', $tutorId))
+            ->count();
+
+        return [
+            'stats' => [
+                ['label' => 'Materi Terbit', 'value' => (string) $publishedCount, 'detail' => 'Terlihat oleh siswa', 'icon' => 'book-open', 'tone' => 'blue', 'target' => 'materials'],
+                ['label' => 'Draf Materi', 'value' => (string) $draftCount, 'detail' => 'Belum diterbitkan', 'icon' => 'edit', 'tone' => 'sky', 'target' => 'materials'],
+                ['label' => 'Tugas Diberikan', 'value' => (string) $assignmentCount, 'detail' => 'Tugas yang kamu buat', 'icon' => 'document', 'tone' => 'amber', 'target' => null],
+                ['label' => 'Menunggu Dinilai', 'value' => (string) $ungradedCount, 'detail' => 'Pengumpulan belum dinilai', 'icon' => 'check', 'tone' => 'green', 'target' => null],
+            ],
+            'recent_materials' => $ownMaterials()
+                ->latest('updated_at')
+                ->take(5)
+                ->get(['id', 'title', 'subject', 'grade_level', 'is_published', 'updated_at']),
+        ];
+    }
+
+    /** Ringkasan beranda admin dari data yang sudah dirakit untuk dialog admin. */
+    private function adminHome($pendingApplications, $userRows): array
+    {
+        $roleCounts = collect($userRows)->countBy('role');
+
+        return [
+            'stats' => [
+                ['label' => 'Pengajuan Tutor', 'value' => (string) $pendingApplications->count(), 'detail' => 'Menunggu pemeriksaan', 'icon' => 'graduation-cap', 'tone' => 'blue', 'target' => null],
+                ['label' => 'Siswa', 'value' => (string) ($roleCounts['student'] ?? 0), 'detail' => 'Akun berstatus Student', 'icon' => 'user', 'tone' => 'sky', 'target' => null],
+                ['label' => 'Tutor', 'value' => (string) ($roleCounts['tutor'] ?? 0), 'detail' => 'Akun berstatus Tutor', 'icon' => 'users', 'tone' => 'amber', 'target' => null],
+                ['label' => 'Admin', 'value' => (string) ($roleCounts['admin'] ?? 0), 'detail' => 'Akun berstatus Admin', 'icon' => 'check', 'tone' => 'green', 'target' => null],
+            ],
+            'recent_applications' => $pendingApplications->take(5)->values(),
+        ];
     }
 }
