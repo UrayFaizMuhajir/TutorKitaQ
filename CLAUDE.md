@@ -71,7 +71,7 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   id 4 `siswa@tutorkita.test`) kini berstatus Belum lengkap → harus melengkapi profil sebelum bisa mengajukan sesi.
 - 2026-11-26 TAHAP 1 selesai (BUB): konversi data lama, A slot tutor, B katalog asli, C pesan/batal/ganti jadwal + bentrok.
 - LANJUTKAN DI SESI BARU dari bagian "Rencana kerja mandiri (Tahap 2–6)" di bawah: pemilik mengizinkan kerja mandiri tanpa
-  persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). TAHAP 2 selesai 2026-11-24 → mulai TAHAP 3.
+  persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). TAHAP 2 selesai 2026-11-24; tambahan pengingat awal TAHAP 3 selesai → lanjut TAHAP 3 inti (TT-19 + sisa TT-17).
 
 - TAHAP 2 dimulai (tanggal sistem 2026-11-24; tanggal 11-25/26 di atas berasal dari sesi sebelumnya):
   - Jam notifikasi mengikuti zona pembaca — commit c1d2d1b (belum diuji browser). Migrasi aditif
@@ -80,7 +80,10 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
     Backup: `database/backup-20261124-133954-sebelum-tt15/`.
   - TT-16 (3.4) selesai — commit tersendiri (belum diuji browser). Migrasi aditif `2026_11_27_000003_add_attendance_columns_to_learning_sessions`.
     Backup: `database/backup-20261124-134904-sebelum-tt16/`.
-  - **TAHAP 2 SELESAI** (BUB). Git bundle: `D:\tutorkita-tahap2-20261124.bundle`. LANJUTKAN DI SESI BARU dari TAHAP 3.
+  - **TAHAP 2 SELESAI** (BUB). Git bundle: `D:\tutorkita-tahap2-20261124.bundle`.
+  - Awal TAHAP 3: pengingat tutor sesi belum ditandai selesai > 24 jam — commit tersendiri (BUB), tanpa migrasi.
+    Tes `TutorSessionCompletionTest::test_tutor_gets_one_reminder_and_a_highlight_24_hours_after_an_unfinished_session`.
+    LANJUTKAN DI SESI BARU: TAHAP 3 inti (TT-19 + sisa TT-17) BELUM dimulai.
 
 ## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
 Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
@@ -153,6 +156,8 @@ J. TT-16 Presensi & selesai (3.4) — pakai slot yang dimulai tak lama lagi (ata
   2. "Simpan & tandai selesai" dengan satu siswa kosong → pesan merah; isi semua → pindah ke Riwayat "Selesai" + Kehadiran.
   3. Siswa: notifikasi "Sesi selesai" + kehadiran; Riwayat Sesi → Lihat Detail: Kehadiran, Catatan sesi, Catatan untukmu.
   4. Sesi diterima yang dibiarkan lewat tanpa ditandai → siswa melihat "Menunggu Konfirmasi Tutor" (bukan Selesai).
+  5. Lewat > 24 jam dari jam selesai → tutor mendapat SATU notifikasi "Pengingat: tandai sesi selesai"; tab Presensi: kartu
+     berbingkai merah + peringatan; muat ulang berkali-kali tidak menambah notifikasi; setelah ditandai selesai tanda hilang.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -459,7 +464,9 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
 - Sesi yang dipindah (ganti jadwal) kembali `pending` dan harus diterima tutor lagi; tautan kelas lama tetap tersimpan.
 - Notifikasi otomatis `NotificationCenterData::syncActivity` untuk sesi berbasis slot kini hanya pending; keputusan, selesai,
   pembatalan tutor, dan kedaluwarsa dikirim langsung (`SessionDecision`, `TutorSlotController`).
-- Sesi confirmed yang tidak pernah ditandai selesai tetap "Menunggu Konfirmasi Tutor" (tanpa batas waktu/pengingat).
+- Sesi confirmed yang tidak pernah ditandai selesai tetap "Menunggu Konfirmasi Tutor" (tanpa batas waktu). Tutor diingatkan
+  SEKALI per sesi bila lewat `completion_reminder_hours` (24) sejak jam selesai: `SessionCompletion::remindOverdue()` di awal
+  `DashboardController` (tanpa scheduler; kunci notifikasi `session-{id}-completion-reminder`), kartu/baris merah di tab Presensi.
 - Presensi/catatan tidak bisa diubah setelah "Tandai selesai" (sengaja, demi kesederhanaan).
 
 ## ATURAN WAJIB

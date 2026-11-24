@@ -32,6 +32,8 @@ class DashboardController extends Controller
         $authenticatedUser = Auth::user();
         // TT-15: pengajuan yang tak dijawab sampai waktu mulai menjadi "Kedaluwarsa" (tanpa scheduler).
         \App\Support\SessionDecision::expireStale();
+        // Pengingat tutor: sesi confirmed > 24 jam setelah selesai tapi belum ditandai selesai (sekali per sesi).
+        \App\Support\SessionCompletion::remindOverdue();
         $fullName = (string) $authenticatedUser->name;
         $nameParts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $initials = mb_strtoupper(implode('', array_map(
@@ -406,6 +408,7 @@ class DashboardController extends Controller
                     'can_set_link' => $session->status === 'confirmed' && $future,
                     'attendance' => $session->attendance,
                     'attendance_label' => $session->attendanceLabel(),
+                    'overdue' => \App\Support\SessionCompletion::isOverdue($session, $now),
                     'tutor_note' => $session->tutor_note,
                     'session_note' => $session->session_note,
                 ];
@@ -419,6 +422,7 @@ class DashboardController extends Controller
                 'label' => $group->first()['label'],
                 'slot' => $group->first()['slot'],
                 'session_note' => $group->pluck('session_note')->filter()->first(),
+                'overdue' => $group->contains('overdue', true),
                 'sessions' => $group->values()->all(),
                 'search' => \Illuminate\Support\Str::lower($group->first()['label'].' '.$group->pluck('student_name')->join(' ').' '.$group->pluck('subject')->join(' ')),
             ])->values()->all();

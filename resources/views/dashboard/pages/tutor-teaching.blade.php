@@ -34,16 +34,19 @@
             <div class="admin-list" data-admin-list data-default-filter="all">
                 <div class="admin-list-tools"><label class="admin-list-search"><x-icon name="search" /><span class="sr-only">Cari sesi</span><input type="search" placeholder="Cari tanggal, siswa, atau mapel..." autocomplete="off" data-admin-search></label></div>
                 @foreach ($groups as $group)
-                    <article class="panel slot-card" data-admin-item data-teaching-group data-status="all" data-search="{{ $group['search'] }}">
+                    <article @class(['panel', 'slot-card', 'is-overdue' => $group['overdue'] ?? false]) data-admin-item data-teaching-group data-status="all" data-search="{{ $group['search'] }}">
                         <div class="slot-card-head">
                             <div><h3>{{ $group['label'] }}</h3>@if ($group['slot'])<p class="slot-capacity">Terisi {{ $group['slot']->booked_count }}/{{ $group['slot']->capacity }}</p>@endif</div>
                         </div>
+                        @if ($group['overdue'] ?? false)
+                            <p class="verification-alert is-rejected teaching-overdue" role="alert" data-overdue-alert>Sudah lebih dari {{ config('tutorkita.completion_reminder_hours') }} jam sejak sesi berakhir. Isi presensi dan tandai selesai — siswa masih menunggu.</p>
+                        @endif
                         @if ($tabKey === 'attendance' && $group['slot'])
                             <form method="post" action="{{ route('dashboard.tutor.slots.attendance', $group['slot']->id) }}" class="role-form teaching-attendance-form" data-attendance-form>@csrf
                         @endif
                         <ul class="slot-bookings teaching-list">
                             @foreach ($group['sessions'] as $row)
-                                <li class="teaching-row" data-teaching-session="{{ $row['id'] }}" data-status="{{ $row['status'] }}">
+                                <li @class(['teaching-row', 'is-overdue' => $row['overdue']]) data-teaching-session="{{ $row['id'] }}" data-status="{{ $row['status'] }}" @if ($row['overdue']) data-overdue @endif>
                                     <div class="teaching-row-head">
                                         <div><strong>{{ $row['student_name'] }}</strong><span>{{ $row['subject'] }} · {{ $row['grade_level'] }} · {{ $row['topic'] }}</span></div>
                                         <span class="verification-badge {{ $statusTones[$row['status']] ?? 'is-pending' }}">{{ $row['status_label'] }}</span>

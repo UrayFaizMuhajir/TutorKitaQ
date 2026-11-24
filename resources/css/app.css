@@ -2002,6 +2002,10 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .attendance-note { min-height: 36px; padding: 7px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
 .teaching-attendance-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
 .status-awaiting_completion { background:#fff0d5; color:#8c5810; }
+/* Pengingat: sesi > 24 jam lewat belum ditandai selesai. */
+.slot-card.is-overdue { border: 2px solid #d83c4c; }
+.teaching-row.is-overdue { background: #ffe5e6; }
+.teaching-overdue { margin: 0; }
 .history-status-awaiting_completion { background:#fff0d6; color:#a96b0d; }
 .history-detail-note.has-note { white-space: pre-line; }
 .tutor-impact-confirm { display: flex; align-items: center; gap: 6px; font-size: 12px; }

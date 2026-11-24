@@ -58,6 +58,37 @@ final class SessionCompletion
         }
     }
 
+    /** Sesi confirmed yang berakhir lebih dari `completion_reminder_hours` lalu dan belum ditandai selesai. */
+    public static function isOverdue(LearningSession $session, ?\Carbon\CarbonInterface $now = null): bool
+    {
+        $now ??= now();
+
+        return $session->status === 'confirmed'
+            && $session->endsAt()->addHours((int) config('tutorkita.completion_reminder_hours'))->lessThan($now);
+    }
+
+    /**
+     * Pengingat tutor (dihitung saat halaman dimuat, tanpa scheduler): satu notifikasi per sesi terlambat —
+     * kunci notifikasi unik per sesi menjamin tidak terkirim dua kali. Isi tanpa data profil siswa (Aturan no. 11).
+     *
+     * @return int jumlah sesi terlambat yang diperiksa
+     */
+    public static function remindOverdue(): int
+    {
+        $now = now();
+        // Pra-saring kasar di SQL (mulai ≤ batas), lalu cek tepat dengan jam selesai di PHP.
+        $limit = $now->copy()->utc()->subHours((int) config('tutorkita.completion_reminder_hours'))->format('Y-m-d H:i:s');
+        $overdue = LearningSession::query()->where('status', 'confirmed')->whereNotNull('tutor_id')->whereNotNull('slot_id')
+            ->where('starts_at', '<', $limit)->orderBy('id')->limit(200)->get()
+            ->filter(fn (LearningSession $session): bool => self::isOverdue($session, $now));
+        $overdue->each(fn (LearningSession $session) => Notifier::send((string) $session->tutor_id, 'session-'.$session->id.'-completion-reminder',
+            'Pengingat: tandai sesi selesai',
+            ['Jangan lupa isi presensi dan tandai selesai sesi '.$session->subject.' – '.$session->topic.' pada ', Notifier::slot($session->starts_at, $session->endsAt()), '. Siswa masih melihat status "Menunggu Konfirmasi Tutor".'],
+            '/dashboard#teaching'));
+
+        return $overdue->count();
+    }
+
     private static function clean(?string $value): ?string
     {
         $value = is_string($value) ? trim($value) : '';

@@ -133,6 +133,42 @@ class TutorSessionCompletionTest extends TestCase
         $this->assertSame('completed', $session->fresh()->status);
     }
 
+    public function test_tutor_gets_one_reminder_and_a_highlight_24_hours_after_an_unfinished_session(): void
+    {
+        [$tutorId, $slot] = $this->tutorWithSlot(capacity: 2);
+        $session = $this->confirmedSession('Budi', 'budi@example.test', $slot);
+        $pending = $this->bookAs('Sari', 'sari@example.test', $slot); // tidak pernah diterima → bukan sasaran pengingat
+        $reminders = fn (): int => UserNotification::query()->where('user_id', $tutorId)->where('title', 'Pengingat: tandai sesi selesai')->count();
+
+        // 23 jam setelah selesai: belum ada pengingat maupun tanda.
+        $this->travelTo($slot->ends_at->addHours(23));
+        $this->login('tutor@example.test');
+        $this->assertStringNotContainsString('data-overdue', $this->attendancePanel());
+        $this->assertSame(0, $reminders());
+
+        // Lewat 24 jam: satu notifikasi + tanda mencolok; memuat ulang (oleh siapa pun) tidak menggandakan.
+        $this->travelTo($slot->ends_at->addHours(24)->addMinute());
+        $panel = $this->attendancePanel();
+        $this->assertStringContainsString('data-overdue-alert', $panel);
+        $this->assertMatchesRegularExpression('/<li class="teaching-row is-overdue" data-teaching-session="'.$session->id.'"[^>]*data-overdue/', $panel);
+        $this->assertSame(1, $reminders());
+        $body = (string) UserNotification::query()->where('user_id', $tutorId)->where('title', 'Pengingat: tandai sesi selesai')->value('body');
+        $this->assertStringContainsString('Jangan lupa isi presensi dan tandai selesai sesi Matematika', $body);
+        $this->assertStringNotContainsString('Wali Uji', $body);
+        $this->get('/dashboard')->assertOk();
+        $this->login('budi@example.test');
+        $this->get('/dashboard')->assertOk();
+        $this->assertSame(1, $reminders());
+        $this->assertSame(0, UserNotification::query()->where('user_id', (string) $pending->student_id)->where('title', 'Pengingat: tandai sesi selesai')->count());
+
+        // Setelah ditandai selesai: tanda hilang, tidak ada pengingat baru.
+        $this->login('tutor@example.test');
+        $this->post(route('dashboard.tutor.slots.attendance', $slot), ['attendance' => [$session->id => 'present'], 'complete' => 1])->assertRedirect('/dashboard#teaching');
+        $this->travelTo($slot->ends_at->addDays(3));
+        $this->assertStringNotContainsString('data-overdue', $this->teachingPage());
+        $this->assertSame(1, $reminders());
+    }
+
     public function test_attendance_page_never_shows_student_private_profile_data(): void
     {
         [, $slot] = $this->tutorWithSlot();

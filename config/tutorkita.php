@@ -22,4 +22,7 @@ return [
 
     // Tombol "Masuk Kelas" aktif sekian menit sebelum sesi dimulai.
     'join_window_minutes' => 15,
+
+    // Tutor diingatkan sekali bila sesi confirmed belum ditandai selesai sekian jam setelah jam selesainya.
+    'completion_reminder_hours' => 24,
 ];
