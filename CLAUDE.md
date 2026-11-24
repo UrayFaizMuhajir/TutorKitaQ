@@ -3,6 +3,12 @@
 Platform bimbingan belajar gratis: mahasiswa relawan (Tutor) mengajar siswa SD/SMP/SMA (Student/Siswa), diawasi Admin.
 Stack: Laravel 12 (PHP 8.2), Blade, Tailwind CSS 4, Vite, JavaScript murni, SQLite. Bahasa antarmuka & pesan error: Indonesia.
 Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutorkita
+Remote git:
+- `origin` = https://github.com/attagetto/tutorkita — repo ASLI tim. JANGAN PERNAH push ke `origin` tanpa perintah eksplisit pemilik.
+- `kita` = https://github.com/UrayFaizMuhajir/TutorKitaQ (private) — repo cadangan/pengembangan kita (ditambahkan 2026-11-24).
+  Setelah setiap TAHAP selesai (setelah commit + git bundle): `git push kita main`.
+- Riwayat git memuat `database/recovery-20261110-115933-users.json` (email + hash, commit 368b6bd) — sudah ada di `origin`;
+  pemilik memilih riwayat TIDAK ditulis ulang, jadi ikut ke `kita` juga. Saran: ganti password akun di file itu.
 
 **Kode adalah acuan. Jira hanya referensi.** Kartu Jira banyak yang salah status/peran; pakai ROADMAP di bawah.
 
@@ -476,6 +482,9 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
    baru, backup dulu `database/database.sqlite` dan beri tahu pemilik proyek.
 3. Jangan mengubah atau menghapus akun yang sudah ada di LocalUserStore.
 4. Jangan menjalankan `php artisan tutorkita:admin`, `git commit`, atau `git push` tanpa izin.
+   Pengecualian yang diizinkan: push `main` ke remote `kita` setelah setiap tahap selesai (setelah commit + git bundle).
+   JANGAN PERNAH push ke `origin` (repo asli tim) tanpa perintah eksplisit pemilik. Jangan force push ke remote mana pun
+   tanpa izin eksplisit.
 5. Sebelum mengedit file, baca dulu isinya dan file yang terkait.
 6. Setiap selesai mengubah kode, jalankan `php artisan test` (dan `npm run build` kalau CSS/JS berubah), lalu
    laporkan hasilnya apa adanya. Jangan bilang sesuatu sudah teruji kalau belum dijalankan.
