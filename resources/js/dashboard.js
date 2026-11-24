@@ -1022,134 +1022,91 @@ if (dashboard) {
     assignmentDialog?.addEventListener('close', () => { currentAssignmentId = null; });
     renderAssignmentCards();
 
+    // Katalog tutor ASLI (ROADMAP 3.1): filter mapel/jenjang/slot kosong, cari, urutan, favorit per id tutor.
     const catalogCards = catalogGrid ? [...catalogGrid.querySelectorAll('[data-catalog-card]')] : [];
-    const favoriteStorageKey = 'tutorkita-favorite-tutors';
-    let favoriteNames = [];
-    try { favoriteNames = JSON.parse(localStorage.getItem(favoriteStorageKey) || '[]'); } catch { favoriteNames = []; }
+    const favoriteStorageKey = 'tutorkita-favorite-tutor-ids';
+    let favoriteIds = [];
+    try { favoriteIds = JSON.parse(localStorage.getItem(favoriteStorageKey) || '[]').map(String); } catch { favoriteIds = []; }
+    const catalogEmpty = catalogGrid?.querySelector('[data-catalog-empty]');
 
-    const renderCatalog = ({ resetPage = false, sortResults = true } = {}) => {
-        if (!catalogGrid) return;
-        if (resetPage) catalogPageNumber = 1;
+    const renderCatalog = ({ sortResults = true } = {}) => {
+        if (!catalogGrid || !catalogPage) return;
         const query = (catalogSearch?.value || '').trim().toLocaleLowerCase('id');
-        const filters = Object.fromEntries([...catalogPage.querySelectorAll('[data-catalog-filter]')].filter((control) => control.type !== 'checkbox').map((control) => [control.dataset.catalogFilter, control.value]));
+        const subject = catalogPage.querySelector('[data-catalog-filter="subject"]')?.value || 'all';
+        const level = catalogPage.querySelector('[data-catalog-filter="level"]')?.value || 'all';
         const availableOnly = catalogPage.querySelector('[data-catalog-filter="available"]')?.checked ?? false;
-        const minRating = Number(filters.rating || 0);
-        const filtered = catalogCards.filter((card) => {
-            const subjects = card.dataset.subjects.split('|');
-            const levels = card.dataset.levels.split('|');
-            const scheduleMatches = filters.schedule === 'all' || card.dataset.day === filters.schedule || card.dataset.period === filters.schedule;
-            return (!query || card.dataset.searchable.includes(query))
-                && (filters.subject === 'all' || subjects.includes(filters.subject.toLocaleLowerCase('id')))
-                && (filters.level === 'all' || levels.includes(filters.level))
-                && scheduleMatches
-                && (filters.location === 'all' || card.dataset.location === filters.location)
-                && Number(card.dataset.rating) >= minRating
-                && (!availableOnly || card.dataset.available === '1');
-        });
+        const filtered = catalogCards.filter((card) => (!query || (card.dataset.searchable || '').includes(query))
+            && (subject === 'all' || (card.dataset.subjects || '').split('|').includes(subject))
+            && (level === 'all' || (card.dataset.levels || '').split('|').includes(level))
+            && (!availableOnly || card.dataset.available === '1'));
+        const nextOf = (card) => (card.dataset.next ? Number(card.dataset.next) : Number.MAX_SAFE_INTEGER);
         const comparator = {
-            'rating-desc': (a, b) => Number(b.dataset.rating) - Number(a.dataset.rating),
-            'rating-asc': (a, b) => Number(a.dataset.rating) - Number(b.dataset.rating),
-            'name-asc': (a, b) => a.dataset.name.localeCompare(b.dataset.name, 'id'),
-            'name-desc': (a, b) => b.dataset.name.localeCompare(a.dataset.name, 'id'),
+            nearest: (a, b) => nextOf(a) - nextOf(b),
+            'name-asc': (a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || '', 'id'),
             newest: (a, b) => Number(b.dataset.created) - Number(a.dataset.created),
-        }[catalogSort?.value || 'rating-desc'];
-        if (sortResults) filtered.sort(comparator);
+        }[catalogSort?.value || 'nearest'];
+        if (sortResults && comparator) filtered.sort(comparator);
         filtered.forEach((card) => catalogGrid.append(card));
-
-        const total = filtered.length;
-        if (catalogCount) catalogCount.textContent = total;
-        const pageCount = Math.ceil(total / catalogPageSize);
-        catalogPageNumber = Math.max(1, Math.min(catalogPageNumber, pageCount || 1));
-        const start = (catalogPageNumber - 1) * catalogPageSize;
-        const currentPageCards = new Set(filtered.slice(start, start + catalogPageSize));
-        catalogCards.forEach((card) => { card.hidden = !currentPageCards.has(card); });
-        const empty = catalogGrid.querySelector('[data-catalog-empty]');
-        if (empty) { empty.hidden = total > 0; catalogGrid.append(empty); }
-
-        if (!catalogPagination) return;
-        catalogPagination.replaceChildren();
-        if (pageCount < 2) { catalogPagination.hidden = true; return; }
-        catalogPagination.hidden = false;
-        const addPageButton = (label, page, className = 'catalog-page-number', ariaLabel = '') => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = className;
-            button.textContent = label;
-            button.dataset.catalogPage = page;
-            if (ariaLabel) button.setAttribute('aria-label', ariaLabel);
-            if (page === catalogPageNumber) { button.classList.add('is-active'); button.setAttribute('aria-current', 'page'); }
-            catalogPagination.append(button);
-        };
-        addPageButton('‹', Math.max(1, catalogPageNumber - 1), 'catalog-page-arrow', 'Halaman sebelumnya');
-        for (let page = 1; page <= pageCount; page += 1) addPageButton(String(page), page);
-        addPageButton('›', Math.min(pageCount, catalogPageNumber + 1), 'catalog-page-arrow', 'Halaman berikutnya');
+        catalogCards.forEach((card) => { card.hidden = !filtered.includes(card); });
+        if (catalogCount) catalogCount.textContent = String(filtered.length);
+        if (catalogEmpty) {
+            catalogGrid.append(catalogEmpty);
+            if (catalogCards.length) catalogEmpty.textContent = 'Tidak ada tutor yang cocok. Coba ubah pencarian atau filter.';
+            catalogEmpty.hidden = catalogCards.length > 0 && filtered.length > 0;
+        }
     };
 
-    catalogCards.forEach((card) => {
-        const name = card.dataset.name;
-        const button = card.querySelector('[data-catalog-favorite]');
-        const saved = favoriteNames.includes(name);
-        button?.classList.toggle('is-favorite', saved);
-        button?.setAttribute('aria-pressed', String(saved));
-    });
-    if (catalogCards.length) renderCatalog({ sortResults: false });
+    const openCatalogProfile = (tutorId) => {
+        const id = String(tutorId || '').replace(/[^0-9]/g, '');
+        const template = id ? catalogGrid?.querySelector(`[data-catalog-profile-template="${id}"]`) : null;
+        const content = catalogDialog?.querySelector('[data-catalog-profile-content]');
+        if (!template || !content || !catalogDialog) return;
+        content.replaceChildren(template.content.cloneNode(true));
+        if (!catalogDialog.open) catalogDialog.showModal();
+    };
 
-    catalogForm?.addEventListener('submit', (event) => { event.preventDefault(); renderCatalog({ resetPage: true }); });
-    catalogSearch?.addEventListener('input', () => {
-        if (document.body.classList.contains('catalog-active') && searchInput) searchInput.value = catalogSearch.value;
-        renderCatalog({ resetPage: true });
-    });
-    catalogPage?.querySelectorAll('[data-catalog-filter]').forEach((control) => control.addEventListener('change', () => renderCatalog({ resetPage: true })));
-    catalogSort?.addEventListener('change', () => renderCatalog());
-    catalogPagination?.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-catalog-page]');
-        if (!button) return;
-        catalogPageNumber = Number(button.dataset.catalogPage);
-        renderCatalog();
-    });
-    catalogGrid?.addEventListener('click', (event) => {
-        const favorite = event.target.closest('[data-catalog-favorite]');
-        if (favorite) {
-            const name = favorite.dataset.catalogFavorite;
-            favoriteNames = favoriteNames.includes(name) ? favoriteNames.filter((item) => item !== name) : [...favoriteNames, name];
-            try { localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteNames)); } catch { /* Keep the in-page favorite state if storage is unavailable. */ }
-            favorite.classList.toggle('is-favorite', favoriteNames.includes(name));
-            favorite.setAttribute('aria-pressed', String(favoriteNames.includes(name)));
-            return;
-        }
-        const profile = event.target.closest('[data-catalog-profile]');
-        if (!profile || !catalogDialog) return;
-        const card = profile.closest('[data-catalog-card]');
-        const name = card.querySelector('.catalog-tutor-info h2').innerText.replace('✓', '').trim();
-        const content = catalogDialog.querySelector('[data-catalog-profile-content]');
-        content.replaceChildren();
-        const heading = document.createElement('h2');
-        heading.id = 'catalog-profile-name';
-        heading.textContent = name;
-        const details = document.createElement('p');
-        details.textContent = `${card.querySelector('.catalog-tutor-info p').textContent} · ${card.querySelectorAll('.catalog-tutor-info p')[1].textContent}`;
-        const review = document.createElement('p');
-        review.textContent = `${card.querySelector('.catalog-rating').innerText.trim()} · ${card.dataset.location} · ${card.dataset.day}, ${card.dataset.period}`;
-        const subjects = document.createElement('p');
-        subjects.textContent = `Mata pelajaran: ${[...card.querySelectorAll('.catalog-tags span')].map((tag) => tag.textContent).join(' · ')}`;
-        const action = document.createElement('button');
-        action.type = 'button'; action.className = 'catalog-dialog-action'; action.textContent = 'Ajukan sesi belajar';
-        action.addEventListener('click', () => { catalogDialog.close(); showToast('Pengajuan sesi tutor akan tersedia di versi berikutnya.'); });
-        content.append(heading, details, review, subjects, action);
-        catalogDialog.showModal();
-    });
-    document.querySelector('[data-catalog-dialog-close]')?.addEventListener('click', () => catalogDialog?.close());
-    document.querySelector('[data-catalog-more-toggle]')?.addEventListener('click', (event) => {
-        const button = event.currentTarget;
-        const popover = document.querySelector('#catalog-more-filters');
-        popover.hidden = !popover.hidden;
-        button.setAttribute('aria-expanded', String(!popover.hidden));
-    });
-    document.querySelector('[data-catalog-reset]')?.addEventListener('click', () => {
-        catalogPage.querySelectorAll('[data-catalog-filter]').forEach((control) => { if (control.type === 'checkbox') control.checked = false; else control.value = control.dataset.catalogFilter === 'schedule' ? 'all' : control.dataset.catalogFilter === 'rating' ? '0' : 'all'; });
-        if (catalogSearch) catalogSearch.value = '';
-        if (searchInput && document.body.classList.contains('catalog-active')) searchInput.value = '';
-        renderCatalog({ resetPage: true });
+    safeInit('katalog tutor', () => {
+        catalogCards.forEach((card) => {
+            const button = card.querySelector('[data-catalog-favorite]');
+            const saved = favoriteIds.includes(card.dataset.tutorId);
+            button?.classList.toggle('is-favorite', saved);
+            button?.setAttribute('aria-pressed', String(saved));
+        });
+        if (catalogCards.length) renderCatalog();
+        catalogForm?.addEventListener('submit', (event) => { event.preventDefault(); renderCatalog(); });
+        catalogSearch?.addEventListener('input', () => {
+            if (document.body.classList.contains('catalog-active') && searchInput) searchInput.value = catalogSearch.value;
+            renderCatalog();
+        });
+        catalogPage?.querySelectorAll('[data-catalog-filter]').forEach((control) => control.addEventListener('change', () => renderCatalog()));
+        catalogSort?.addEventListener('change', () => renderCatalog());
+        catalogGrid?.addEventListener('click', (event) => {
+            const favorite = event.target.closest('[data-catalog-favorite]');
+            if (favorite) {
+                const id = favorite.dataset.catalogFavorite;
+                favoriteIds = favoriteIds.includes(id) ? favoriteIds.filter((item) => item !== id) : [...favoriteIds, id];
+                try { localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteIds)); } catch { /* Favorit tetap di halaman. */ }
+                favorite.classList.toggle('is-favorite', favoriteIds.includes(id));
+                favorite.setAttribute('aria-pressed', String(favoriteIds.includes(id)));
+                return;
+            }
+            const profile = event.target.closest('[data-catalog-profile]');
+            if (profile) openCatalogProfile(profile.dataset.catalogProfile);
+        });
+        document.querySelector('[data-catalog-dialog-close]')?.addEventListener('click', () => catalogDialog?.close());
+        // "Lihat profil" dari beranda: buka katalog lalu dialog tutor itu.
+        document.querySelectorAll('[data-catalog-open]').forEach((button) => button.addEventListener('click', () => {
+            showPage('tutors');
+            openCatalogProfile(button.dataset.catalogOpen);
+        }));
+        // "Pilih slot ini": diteruskan ke form pengajuan sesi (ROADMAP 3.2) lewat event.
+        catalogDialog?.addEventListener('click', (event) => {
+            const pick = event.target.closest('[data-catalog-pick-slot]');
+            if (!pick || pick.disabled) return;
+            const handled = !document.dispatchEvent(new CustomEvent('tutorkita:pick-slot', { cancelable: true, detail: { slotId: pick.dataset.catalogPickSlot, tutorId: pick.dataset.tutorId } }));
+            if (handled) catalogDialog.close();
+            else showToast('Pengajuan sesi dengan slot belum tersedia.');
+        });
     });
 
     const sessionPage = document.querySelector('[data-session-config]');

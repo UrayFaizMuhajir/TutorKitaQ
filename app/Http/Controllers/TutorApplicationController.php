@@ -209,7 +209,11 @@ class TutorApplicationController extends Controller
 
     public function photo(Request $request, string $userId, LocalUserStore $users): StreamedResponse
     {
-        abort_unless(($request->user()->role ?? '') === 'admin' || (string) $request->user()->getAuthIdentifier() === $userId, 403);
+        // Admin & pemilik selalu boleh. Pengguna login lain hanya boleh melihat foto TUTOR terverifikasi DAN aktif
+        // (katalog, ROADMAP 3.1). Foto siswa tetap privat (Aturan no. 11).
+        $publicTutor = DB::table('user_roles')->where('user_id', $userId)->value('role') === 'tutor'
+            && TutorProfile::query()->verified()->active()->where('user_id', $userId)->exists();
+        abort_unless(($request->user()->role ?? '') === 'admin' || (string) $request->user()->getAuthIdentifier() === $userId || $publicTutor, 403);
         $record = $users->findById($userId);
         $path = $record['avatar_path'] ?? TutorProfile::query()->where('user_id', $userId)->value('avatar_path');
         if (! $path && ($request->user()->role ?? '') === 'admin') $path = TutorApplication::query()->where('user_id', $userId)->value('avatar_path');

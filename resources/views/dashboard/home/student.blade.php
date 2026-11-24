@@ -76,16 +76,27 @@
         </section>
     </div>
 
+    {{-- Tutor asli (ROADMAP 3.1): maks. 3 tutor terverifikasi & aktif, diurutkan slot kosong terdekat. --}}
     <section class="panel tutors-section" id="tutor" aria-labelledby="tutor-heading">
         <div class="panel-heading">
-            <div><span class="section-kicker">DIREKOMENDASIKAN UNTUKMU</span><h2 id="tutor-heading">Kenali tutor relawan kami</h2><p>Teman belajar yang siap bantu kamu berkembang.</p></div>
-            <div class="tutor-tools"><label class="filter-select-wrap"><span class="sr-only">Filter mata pelajaran tutor</span><select id="tutor-subject-filter" class="filter-select"><option value="all">Semua pelajaran</option><option value="Matematika">Matematika</option><option value="Programming">Programming</option><option value="Bahasa Inggris">Bahasa Inggris</option></select><x-icon name="chevron-down" class="icon-sm" /></label><span class="tutor-count">{{ count($tutors) }} tutor</span></div>
+            <div><span class="section-kicker">TUTOR RELAWAN</span><h2 id="tutor-heading">Kenali tutor relawan kami</h2><p>Tutor terverifikasi yang siap membantumu belajar.</p></div>
+            <button class="text-link" type="button" data-page-link="tutors">Lihat katalog <x-icon name="arrow-right" class="icon-sm" /></button>
         </div>
-        <div class="tutor-grid" data-tutor-grid>
-            @foreach ($tutors as $index => $tutor)
-                <x-dashboard.tutor-card :tutor="$tutor" :index="$index" />
-            @endforeach
-            <p class="empty-state tutor-empty" data-tutor-empty hidden>Tidak ada tutor untuk mata pelajaran ini.</p>
+        <div class="tutor-grid home-tutor-grid" data-home-tutors>
+            @forelse ($tutors as $tutor)
+                <article class="home-tutor-card" data-home-tutor="{{ $tutor['id'] }}">
+                    <span class="home-tutor-avatar" aria-hidden="true">@if ($tutor['photo_url'])<img src="{{ $tutor['photo_url'] }}" alt="" loading="lazy">@else{{ $tutor['initials'] }}@endif</span>
+                    <div class="home-tutor-copy">
+                        <h3>{{ $tutor['name'] }}</h3>
+                        <p>{{ $tutor['occupation'] ?: $tutor['institution'] }}</p>
+                        <div class="catalog-tags">@foreach (array_slice($tutor['subjects'], 0, 3) as $subject)<span>{{ $subject }}</span>@endforeach</div>
+                        <small>{{ $tutor['slots'] ? 'Slot terdekat: '.$tutor['slots'][0]['label'] : 'Belum ada slot kosong' }}</small>
+                    </div>
+                    <button class="button button-outline" type="button" data-catalog-open="{{ $tutor['id'] }}">Lihat profil <x-icon name="arrow-right" class="icon-sm" /></button>
+                </article>
+            @empty
+                <p class="empty-state" data-home-tutors-empty>Belum ada tutor yang tersedia saat ini. Tutor relawan sedang menyiapkan jadwal — cek lagi nanti.</p>
+            @endforelse
         </div>
     </section>
 

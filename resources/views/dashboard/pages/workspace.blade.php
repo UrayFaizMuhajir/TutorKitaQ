@@ -5,35 +5,7 @@
     $isStudentView = ($navigation['role'] ?? 'student') === 'student';
 @endphp
 @if (in_array('tutors', $visiblePages, true))
-<section class="dashboard-page spa-page catalog-page" data-spa-page="tutors" hidden>
-    <div class="catalog-heading"><h1>Katalog <em>Tutor</em></h1><p>Temukan tutor relawan yang sesuai dengan kebutuhan belajar kamu.</p></div>
-    <form class="catalog-search-row" data-catalog-search-form>
-        <label class="catalog-search"><x-icon name="search"/><span class="sr-only">Cari tutor</span><input type="search" placeholder="Cari nama tutor atau mata pelajaran..." data-catalog-search></label>
-        <button class="catalog-search-submit" type="submit">Cari Tutor <x-icon name="arrow-right" class="icon-sm"/></button>
-    </form>
-    <div class="catalog-filters" aria-label="Filter tutor">
-        <label class="catalog-filter"><span>Mata Pelajaran</span><span class="catalog-select"><x-icon name="book"/><select data-catalog-filter="subject" aria-label="Mata pelajaran"><option value="all">Semua Mata Pelajaran</option>@foreach (['Matematika','IPA','IPS','Bahasa Indonesia','Bahasa Inggris','Biologi','Fisika','Kimia','Sejarah','PPKn','Sastra','Ekonomi','Programming'] as $subject)<option value="{{ $subject }}">{{ $subject }}</option>@endforeach</select><x-icon name="chevron-down" class="select-chevron"/></span></label>
-        <label class="catalog-filter"><span>Jenjang Kelas</span><span class="catalog-select"><x-icon name="grid"/><select data-catalog-filter="level" aria-label="Jenjang kelas"><option value="all">Semua Jenjang</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">SMA/SMK</option></select><x-icon name="chevron-down" class="select-chevron"/></span></label>
-        <label class="catalog-filter"><span>Jadwal Tersedia</span><span class="catalog-select"><x-icon name="calendar"/><select data-catalog-filter="schedule" aria-label="Jadwal tersedia"><option value="all">Pilih Jadwal</option><optgroup label="Hari"><option>Senin</option><option>Selasa</option><option>Rabu</option><option>Kamis</option><option>Jumat</option><option>Sabtu</option><option>Minggu</option></optgroup><optgroup label="Waktu"><option>Pagi</option><option>Siang</option><option>Sore</option><option>Malam</option></optgroup></select><x-icon name="chevron-down" class="select-chevron"/></span></label>
-        <label class="catalog-filter"><span>Lokasi (Opsional)</span><span class="catalog-select"><x-icon name="map-pin"/><select data-catalog-filter="location" aria-label="Lokasi"><option value="all">Semua Lokasi</option>@foreach (['Jakarta','Bandung','Yogyakarta','Surabaya','Semarang','Malang','Bogor','Surakarta','Makassar','Jember','Bandar Lampung','Palembang','Denpasar','Padang'] as $location)<option>{{ $location }}</option>@endforeach</select><x-icon name="chevron-down" class="select-chevron"/></span></label>
-        <div class="catalog-more-wrap"><button class="catalog-more-button" type="button" aria-expanded="false" aria-controls="catalog-more-filters" data-catalog-more-toggle><x-icon name="filter"/> Filter Lainnya <x-icon name="chevron-down" class="icon-sm more-chevron"/></button><div class="catalog-more-popover" id="catalog-more-filters" hidden><strong>Filter tambahan</strong><label>Rating minimum<select data-catalog-filter="rating"><option value="0">Semua rating</option><option value="4.5">4.5 ke atas</option><option value="4.8">4.8 ke atas</option><option value="5">5.0</option></select></label><label class="catalog-available-check"><input type="checkbox" data-catalog-filter="available"> Hanya tutor tersedia</label><button class="catalog-clear-filters" type="button" data-catalog-reset>Reset filter</button></div></div>
-    </div>
-    <div class="catalog-results-row"><p aria-live="polite">Menampilkan <strong data-catalog-total>24</strong> tutor relawan</p><label class="catalog-sort"><span>Urutkan berdasarkan</span><select data-catalog-sort aria-label="Urutkan tutor"><option value="rating-desc">Rating Tertinggi</option><option value="rating-asc">Rating Terendah</option><option value="name-asc">Nama A–Z</option><option value="name-desc">Nama Z–A</option><option value="newest">Tutor Terbaru</option></select></label></div>
-    <div class="catalog-grid" data-catalog-grid>
-        @foreach ($catalog_tutors as $catalogIndex => $tutor)
-            <article class="catalog-card" data-catalog-card data-name="{{ \Illuminate\Support\Str::lower($tutor['name']) }}" data-searchable="{{ \Illuminate\Support\Str::lower($tutor['name'].' '.$tutor['university'].' '.$tutor['major'].' '.implode(' ', $tutor['subjects']).' '.implode(' ', $tutor['levels']).' '.$tutor['location']) }}" data-subjects="{{ \Illuminate\Support\Str::lower(implode('|', $tutor['subjects'])) }}" data-levels="{{ implode('|', $tutor['levels']) }}" data-location="{{ $tutor['location'] }}" data-day="{{ $tutor['day'] }}" data-period="{{ $tutor['period'] }}" data-available="{{ $tutor['available'] ? '1' : '0' }}" data-rating="{{ $tutor['rating'] }}" data-created="{{ $catalogIndex }}" style="--catalog-delay: {{ ($catalogIndex % 8) * 35 }}ms">
-                <button class="catalog-favorite" type="button" aria-label="Simpan {{ $tutor['name'] }} sebagai favorit" aria-pressed="false" data-catalog-favorite="{{ $tutor['name'] }}"><x-icon name="heart"/></button>
-                <div class="catalog-tutor-main"><span class="catalog-avatar avatar-tone-{{ $catalogIndex % 4 }}" aria-hidden="true"><i></i></span><div class="catalog-tutor-info"><h2>{{ $tutor['name'] }} <span class="catalog-verified" aria-label="Tutor terverifikasi">✓</span></h2><p>{{ $tutor['university'] }}</p><p>{{ $tutor['major'] }}</p></div></div>
-                <div class="catalog-rating-row"><span class="catalog-availability {{ $tutor['available'] ? 'is-available' : 'is-unavailable' }}">{{ $tutor['available'] ? 'Tersedia' : 'Tidak Tersedia' }}</span><span class="catalog-rating"><b>★</b> {{ number_format($tutor['rating'], 1) }} <small>({{ $tutor['reviews'] }} ulasan)</small></span></div>
-                <div class="catalog-tags">@foreach ($tutor['subjects'] as $tag)<span>{{ $tag }}</span>@endforeach @foreach ($tutor['levels'] as $level)<span>{{ $level }}</span>@endforeach</div>
-                <button class="catalog-profile-button" type="button" data-catalog-profile="{{ $catalogIndex }}">Lihat Profil <x-icon name="arrow-right" class="icon-sm"/></button>
-            </article>
-        @endforeach
-        <p class="catalog-empty" data-catalog-empty hidden>Tidak ada tutor yang cocok. Coba ubah pencarian atau filter.</p>
-    </div>
-    <nav class="catalog-pagination" aria-label="Halaman katalog tutor" data-catalog-pagination></nav>
-    <dialog class="catalog-profile-dialog" data-catalog-profile-dialog aria-labelledby="catalog-profile-name"><button class="catalog-dialog-close" type="button" aria-label="Tutup" data-catalog-dialog-close>×</button><div data-catalog-profile-content></div></dialog>
-</section>
+@include('dashboard.pages.tutor-catalog')
 @endif
 
 @php

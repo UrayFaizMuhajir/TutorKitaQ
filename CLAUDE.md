@@ -157,7 +157,7 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 - 2.3 Materi (tutor lihat miliknya termasuk draf; mapel/jenjang dari katalog; data lama tetap terbaca; buang jenjang di luar `grade_levels`) — **Sebagian** (CRUD materi selesai; draf tak terlihat; mapel/jenjang teks).
 
 ### Tahap 3: Alur sesi (urutan wajib)
-- 3.1 Katalog tutor asli + slot kosong (ganti `DashboardMockData`; filter dari DB) — **Sebagian** (UI ada, data mock).
+- 3.1 Katalog tutor asli + slot kosong — **Selesai (BUB), 2026-11-26**: `App\Support\TutorCatalog` (verified+active, jenjang dari mapel, slot open ≥3 jam & ≤14 hari), partial `dashboard/pages/tutor-catalog.blade.php`, foto tutor aktif boleh dilihat pengguna login, "Belum ada ulasan", favorit per id (`tutorkita-favorite-tutor-ids`).
 - 3.2 Ajukan/batalkan sesi (`tutor_id`, `slot_id` aditif; anti pesan ganda dalam transaksi; hanya Siswa) — **Sebagian** (store/cancel ke tutor mock; "hanya Siswa" sudah).
 - 3.3 Tutor terima/tolak pengajuan + alasan + notifikasi siswa — **Belum**.
 - 3.4 Presensi, catatan, tandai selesai (status `completed` HANYA dari tutor) — **Belum**.
@@ -196,7 +196,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. "(BUB)" = belum diuji b
 | TT-4 | [Tutor] Profil + unggah kartu mahasiswa | Done | ✅ | Daftar sebagai tutor, kartu privat, `TutorVerificationTest` | Done (BUB) |
 | TT-6 | [Admin] Setujui, tolak, nonaktifkan tutor | Done | ✅ | Verifikasi + nonaktif/aktif + audit, `TutorStatusTest` | Done (BUB) |
 | TT-9 | [Siswa] Profil + dokumen pendukung | Done | ✅ | `StudentVerificationTest` (termasuk privasi) | Done (BUB) |
-| TT-11 | [Siswa] Cari tutor, profil, slot kosong | Done | 🟡 | Katalog & dialog masih data MOCK; slot belum ada → rencana B | In Progress |
+| TT-11 | [Siswa] Cari tutor, profil, slot kosong | Done | ✅ | Katalog asli (`TutorCatalog`), foto tutor, slot 14 hari, `TutorCatalogTest` | Done (BUB) |
 | TT-13 | [Semua role] Dashboard ringkasan & grafik | Done | 🟡 | Siswa: stat + grafik. Tutor/Admin: stat tanpa grafik → ROADMAP 6.1 | In Progress |
 | TT-25 | [Siswa] Menambah/mengubah/menghapus jadwal pelajaran | Done | ❌ | Belum ada; "Ganti jadwal" sesi = isi kartu ini → rencana C | In Progress |
 | TT-7 | [Tutor] Menambah slot jadwal | In Progress | ✅ | Slot + kapasitas + mingguan + zona waktu, `TutorSlotTest` | Done (BUB) |
@@ -219,7 +219,7 @@ Sisa setelah itu (urutan kerja): TT-15 (3.3) → TT-16 (3.4) → TT-19 UI tutor 
 TT-22 (5.4) → TT-13 grafik tutor/admin (6.1). Di luar Jira: ROADMAP 0.2, 0.3, 6.2.
 
 ## Rencana berikutnya (menunggu persetujuan) — slot, katalog, sesi (TT-7, TT-8, TT-11, TT-12, TT-25)
-Disusun 2026-11-25; DISETUJUI pemilik 2026-11-26 (termasuk konversi data lama). Progres: konversi ✅, A ✅ (commit "Tutor: slot jadwal …"), B ⏳, C ⏳. Catatan A: tampilan jam SESI (bukan slot) dikonversi ke zona pengguna di C.
+Disusun 2026-11-25; DISETUJUI pemilik 2026-11-26 (termasuk konversi data lama). Progres: konversi ✅, A ✅, B ✅ (katalog asli; form pengajuan sesi SEMENTARA masih memakai daftar mock sampai C), C ⏳. Catatan A: tampilan jam SESI (bukan slot) dikonversi ke zona pengguna di C.
 Urutan: konversi data lama → A → B → C, masing-masing backup DB, semua tes + build lulus, commit "(belum diuji browser)".
 
 ### Zona waktu (mengikuti laptop pengguna)

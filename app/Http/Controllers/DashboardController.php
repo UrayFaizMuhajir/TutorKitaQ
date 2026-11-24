@@ -38,6 +38,9 @@ class DashboardController extends Controller
         )));
 
         $dashboardData = DashboardMockData::make();
+        // Katalog tutor ASLI (ROADMAP 3.1) menggantikan data mock; beranda siswa menampilkan maks. 3 tutor asli.
+        $dashboardData['catalog_tutors'] = \App\Support\TutorCatalog::make($users);
+        $dashboardData['tutors'] = $dashboardData['catalog_tutors']->sortBy(fn (array $tutor) => $tutor['next_slot_ts'] ?? PHP_INT_MAX)->take(3)->values();
         $dashboardData['user'] = [
             'name' => $fullName,
             'full_name' => $fullName,
@@ -216,7 +219,8 @@ class DashboardController extends Controller
         $dashboardData['week_sessions'] = $dashboardData['learning_sessions']
             ->filter(fn (LearningSession $session): bool => $session->starts_at->betweenIncluded($weekStart, $weekEnd) && $session->display_status !== 'cancelled')
             ->take(4);
-        $dashboardData['session_tutors'] = $dashboardData['catalog_tutors'];
+        // Form pengajuan sesi masih memakai daftar lama sampai pengajuan berbasis slot (ROADMAP 3.2) selesai.
+        $dashboardData['session_tutors'] = DashboardMockData::make()['catalog_tutors'];
         $dashboardData += SessionHistoryData::make($dashboardData['learning_sessions']);
         $dashboardData += LearningMaterialsDashboardData::make($authenticatedUser);
         $dashboardData['subject_catalog'] = Subject::query()

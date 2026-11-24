@@ -1990,3 +1990,28 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 .tutor-impact-warning { flex-basis: 100%; }
 .verification-page .tutor-review-actions form[data-tutor-status-form] { flex-wrap: wrap; }
 @media (max-width: 760px) { .slot-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Katalog tutor asli (ROADMAP 3.1) */
+.catalog-photo { display: grid; width: 76px; height: 88px; flex: 0 0 auto; place-items: center; overflow: hidden; border-radius: 14px; background: linear-gradient(145deg, #e5efff, #cfe0fb); color: var(--tk-blue); font-size: 22px; font-weight: 800; }
+.catalog-photo img { width: 100%; height: 100%; object-fit: cover; }
+.catalog-photo.is-large { width: 92px; height: 92px; border-radius: 18px; }
+.catalog-rating.is-empty { color: #7a8699; font-size: 11px; font-style: italic; }
+.catalog-tags span.is-level { background: #fff4e0; color: #8a5a00; }
+.catalog-filter-check { display: flex; align-items: center; gap: 8px; align-self: end; padding: 10px 12px; border: 1px solid var(--tk-border); border-radius: 12px; background: #fff; font-size: 13px; }
+.catalog-profile-head { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+.catalog-profile-head h2 { margin: 0 0 4px; }
+.catalog-profile-head p { margin: 2px 0; color: var(--tk-muted); font-size: 13px; }
+.catalog-profile-bio { line-height: 1.6; }
+.catalog-slot-list { display: grid; gap: 8px; padding: 0; margin: 8px 0 0; list-style: none; }
+.catalog-slot-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--tk-border); border-radius: 12px; }
+.catalog-slot-list li span { display: grid; gap: 2px; }
+.catalog-slot-list small { color: var(--tk-muted); }
+.catalog-slot-list .button { width: auto; min-height: 36px; padding-inline: 14px; background: var(--tk-blue); color: #fff; }
+.catalog-slot-list .button:disabled { background: #a9c3ea; cursor: not-allowed; }
+.home-tutor-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.home-tutor-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--tk-border); border-radius: 16px; background: #fff; }
+.home-tutor-avatar { display: grid; width: 56px; height: 56px; place-items: center; overflow: hidden; border-radius: 14px; background: #edf5ff; color: var(--tk-blue); font-weight: 800; }
+.home-tutor-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.home-tutor-copy h3 { margin: 0; font-size: 15px; }
+.home-tutor-copy p { margin: 2px 0 6px; color: var(--tk-muted); font-size: 12px; }
+.home-tutor-copy small { color: var(--tk-muted); font-size: 11px; }

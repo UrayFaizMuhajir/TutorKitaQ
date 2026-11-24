@@ -141,22 +141,24 @@ class AuthenticationTest extends TestCase
         $this->get('/dashboard')->assertSeeText('Selamat datang kembali, Andi!');
     }
 
-    public function test_dashboard_renders_the_full_interactive_tutor_catalog(): void
+    public function test_dashboard_renders_the_real_tutor_catalog_with_a_clear_empty_state(): void
     {
+        // Sejak katalog tutor asli (ROADMAP 3.1) tidak ada lagi 24 tutor mock; tanpa tutor terverifikasi+aktif
+        // katalog menampilkan keadaan kosong yang jelas. Tutor asli diuji di TutorCatalogTest.
         $this->post('/register', $this->registrationData('Budi', 'budi@test.com', 'Budi123!'));
         $this->post('/login', ['contact' => 'budi@test.com', 'password' => 'Budi123!'])
             ->assertRedirect('/dashboard');
 
-        $response = $this->get('/dashboard#tutors')->assertOk()
-            ->assertSeeText('Katalog Tutor')
-            ->assertSeeText('Alya Putri')
-            ->assertSeeText('Rizky Maulana')
-            ->assertSee('data-catalog-filter="subject"', false)
-            ->assertSee('data-catalog-filter="schedule"', false)
-            ->assertSee('data-catalog-sort', false)
-            ->assertSee('data-catalog-pagination', false);
-
-        $this->assertSame(24, substr_count($response->getContent(), 'data-catalog-card'));
+        $html = $this->get('/dashboard#tutors')->assertOk()->assertSeeText('Katalog Tutor')->getContent();
+        $catalog = \Illuminate\Support\Str::between($html, 'data-spa-page="tutors"', '</section>');
+        $this->assertStringContainsString('data-catalog-filter="subject"', $catalog);
+        $this->assertStringContainsString('data-catalog-filter="level"', $catalog);
+        $this->assertStringContainsString('data-catalog-filter="available"', $catalog);
+        $this->assertStringContainsString('data-catalog-sort', $catalog);
+        $this->assertSame(0, substr_count($catalog, 'data-catalog-card'));
+        $this->assertStringContainsString('Belum ada tutor relawan yang tersedia saat ini.', $catalog);
+        $this->assertStringNotContainsString('Alya Putri', $catalog);
+        $this->assertStringNotContainsString('data-catalog-filter="location"', $catalog);
     }
 
     public function test_dashboard_summary_and_schedule_use_the_signed_in_students_database_records(): void
