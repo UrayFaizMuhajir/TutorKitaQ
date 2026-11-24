@@ -27,9 +27,13 @@ class NotificationCenterData
         }
 
         $items = $items->map(function (UserNotification $item): UserNotification {
-            $item->time_label = $item->created_at->locale('id')->isoFormat('HH:mm');
-            $item->date_label = $item->created_at->locale('id')->isoFormat('D MMMM YYYY');
-            $item->group_label = $item->created_at->isToday() ? 'Hari Ini' : ($item->created_at->isYesterday() ? 'Kemarin' : $item->created_at->locale('id')->isoFormat('D MMMM YYYY'));
+            // Semua label waktu di zona pembaca (created_at tersimpan UTC).
+            $created = UserTime::local($item->created_at);
+            $today = UserTime::local(now());
+            $item->display_body = $item->displayBody();
+            $item->time_label = $created->format('H.i');
+            $item->date_label = $created->locale('id')->isoFormat('D MMMM YYYY');
+            $item->group_label = $created->isSameDay($today) ? 'Hari Ini' : ($created->isSameDay($today->subDay()) ? 'Kemarin' : $created->locale('id')->isoFormat('D MMMM YYYY'));
             return $item;
         });
 
@@ -51,12 +55,12 @@ class NotificationCenterData
                 default => 'Pengajuan Sesi Belajar',
             };
             self::store($userId, 'session:'.$session->id.':'.$session->status, 'sessions', $statusLabel,
-                $session->subject.' dengan '.$session->tutor_name.' · '.\App\Support\UserTime::dateTime($session->starts_at), '#sessions');
+                [$session->subject.' dengan '.$session->tutor_name.' · ', Notifier::at($session->starts_at)], '#sessions');
         });
 
         StudentAssignment::query()->with('submission')->where('student_id', $userId)->get()->each(function (StudentAssignment $assignment) use ($userId): void {
             self::store($userId, 'assignment:'.$assignment->id, 'assignments', 'Tugas Baru',
-                $assignment->tutor_name.' memberikan tugas: “'.$assignment->title.'”. Deadline: '.\App\Support\UserTime::dateTime($assignment->due_at).'.', '#assignments');
+                [$assignment->tutor_name.' memberikan tugas: “'.$assignment->title.'”. Deadline: ', Notifier::at($assignment->due_at), '.'], '#assignments');
             $submission = $assignment->submission;
             if ($submission instanceof AssignmentSubmission && $submission->graded_at) {
                 self::store($userId, 'grade:'.$submission->id.':'.$submission->graded_at->timestamp, 'assignments', 'Nilai Tugas Telah Diberikan',
@@ -65,11 +69,12 @@ class NotificationCenterData
         });
     }
 
-    private static function store(string $userId, string $key, string $category, string $title, string $body, ?string $url): void
+    /** @param  string|list<string|array<string, mixed>>  $body */
+    private static function store(string $userId, string $key, string $category, string $title, string|array $body, ?string $url): void
     {
         UserNotification::query()->firstOrCreate(
             ['user_id' => $userId, 'notification_key' => $key],
-            ['category' => $category, 'title' => $title, 'body' => $body, 'action_url' => $url],
+            ['category' => $category, 'title' => $title, ...Notifier::attributes($body), 'action_url' => $url],
         );
     }
 }

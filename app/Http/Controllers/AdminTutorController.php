@@ -61,8 +61,8 @@ class AdminTutorController extends Controller
             // Siswa yang punya sesi mendatang dengan tutor ini diberi kabar (sesi tidak otomatis dibatalkan).
             $impacted->each(fn (\App\Models\LearningSession $session) => \App\Support\Notifier::send(
                 (string) $session->student_id, 'tutor-deactivated-'.$change->id.'-session-'.$session->id, 'Tutor sesi kamu dinonaktifkan',
-                ($account['name'] ?? 'Tutor').' sedang dinonaktifkan admin. Sesi '.$session->subject.' pada '
-                    .\App\Support\UserTime::slotLabel($session->starts_at, $session->endsAt()).' mungkin tidak berjalan; tunggu kabar atau ganti jadwal.',
+                [($account['name'] ?? 'Tutor').' sedang dinonaktifkan admin. Sesi '.$session->subject.' pada ',
+                    \App\Support\Notifier::slot($session->starts_at, $session->endsAt()), ' mungkin tidak berjalan; tunggu kabar atau ganti jadwal.'],
                 '/dashboard#sessions',
             ));
         });

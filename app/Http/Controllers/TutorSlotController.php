@@ -47,7 +47,7 @@ class TutorSlotController extends Controller
             $created = []; $skipped = []; // aman bila transaksi dicoba ulang
             // Dihitung ulang di dalam transaksi: yang tersimpan hanya tanggal tanpa bentrok (sama dengan pratinjau).
             foreach (SlotPlanner::plan($tutorId, $data['date'], $data['start_time'], $data['end_time'], $data['repeat_until']) as $item) {
-                if (! $item['ok']) { $skipped[] = $item['label'].' ('.$item['reason'].')'; continue; }
+                if (! $item['ok']) { $skipped[] = $item; continue; }
                 TutorAvailabilitySlot::query()->create([
                     'tutor_id' => $tutorId, 'starts_at' => $item['starts_at'], 'ends_at' => $item['ends_at'],
                     'capacity' => $data['capacity'], 'booked_count' => 0, 'status' => 'open',
@@ -55,12 +55,23 @@ class TutorSlotController extends Controller
                 $created[] = $item['label'];
             }
         }, 5); // dicoba ulang bila SQLite sibuk
+        $skippedText = implode('; ', array_map(fn (array $item): string => $item['label'].' ('.$item['reason'].')', $skipped));
         if ($created === []) {
-            throw ValidationException::withMessages(['slot' => 'Tidak ada slot yang dibuat. '.implode('; ', $skipped)]);
+            throw ValidationException::withMessages(['slot' => 'Tidak ada slot yang dibuat. '.$skippedText]);
         }
-        $message = count($created).' slot dibuat.'.($skipped ? ' Dilewati: '.implode('; ', $skipped).'.' : '');
+        $message = count($created).' slot dibuat.'.($skipped ? ' Dilewati: '.$skippedText.'.' : '');
         if ($skipped) {
-            Notifier::send($tutorId, 'slot-skip-'.now()->format('YmdHisu'), 'Sebagian slot dilewati', $message, self::PAGE, 'system');
+            // Notifikasi menyimpan waktu UTC agar tetap benar bila tutor kemudian membuka dari zona lain.
+            $body = [count($created).' slot dibuat. Dilewati: '];
+            foreach ($skipped as $i => $item) {
+                array_push($body, $i ? '; ' : '', Notifier::slot($item['starts_at'], $item['ends_at']), ' (');
+                $clash = $item['clash'];
+                if ($clash) array_push($body, 'Bentrok dengan slot ', Notifier::slot($clash->starts_at, $clash->ends_at));
+                else $body[] = (string) $item['reason'];
+                $body[] = ')';
+            }
+            $body[] = '.';
+            Notifier::send($tutorId, 'slot-skip-'.now()->format('YmdHisu'), 'Sebagian slot dilewati', $body, self::PAGE, 'system');
         }
 
         return redirect(self::PAGE)->with('status', $message);
@@ -128,12 +139,12 @@ class TutorSlotController extends Controller
             $fresh = TutorAvailabilitySlot::query()->whereKey($model->id)->lockForUpdate()->firstOrFail();
             abort_if($fresh->status === 'cancelled', 409, 'Slot ini sudah dibatalkan.');
             abort_if($fresh->starts_at->isPast(), 409, 'Slot yang sudah dimulai tidak bisa dibatalkan.');
-            $label = UserTime::slotLabel($fresh->starts_at, $fresh->ends_at);
-            $fresh->activeSessions()->get()->each(function (LearningSession $session) use ($reason, $tutorName, $label, &$affected): void {
+            $time = Notifier::slot($fresh->starts_at, $fresh->ends_at); // dirender di zona tiap siswa, bukan zona tutor
+            $fresh->activeSessions()->get()->each(function (LearningSession $session) use ($reason, $tutorName, $time, &$affected): void {
                 $session->update(['status' => 'cancelled', 'cancelled_by' => 'tutor', 'cancel_reason' => $reason]);
                 $affected++;
                 Notifier::send((string) $session->student_id, 'session-'.$session->id.'-cancelled-by-tutor', 'Sesi dibatalkan tutor',
-                    $tutorName.' membatalkan sesi '.$session->subject.' ('.$label.'). Alasan: '.$reason, '/dashboard#sessions');
+                    [$tutorName.' membatalkan sesi '.$session->subject.' (', $time, '). Alasan: '.$reason], '/dashboard#sessions');
             });
             $fresh->update(['status' => 'cancelled', 'cancel_reason' => $reason, 'booked_count' => 0]);
         }, 5);

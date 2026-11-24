@@ -332,7 +332,7 @@
                             <article class="notification-center-card {{ $notification->read_at ? '' : 'is-unread' }}" data-notification-card data-category="{{ $notification->category }}" data-notification-id="{{ $notification->id }}">
                                 <a class="notification-center-open" href="{{ $notification->action_url ?: '#notifications' }}" data-notification-open aria-label="Buka notifikasi: {{ $notification->title }}">
                                     <span class="notification-center-icon icon-{{ $notification->category }}"><x-icon name="{{ ['sessions' => 'calendar', 'assignments' => 'check', 'messages' => 'chat', 'system' => 'sparkle'][$notification->category] ?? 'bell' }}"/></span>
-                                    <span class="notification-center-copy"><strong>{{ $notification->title }}</strong><span>{{ $notification->body }}</span></span>
+                                    <span class="notification-center-copy"><strong>{{ $notification->title }}</strong><span>{{ $notification->display_body }}</span></span>
                                     <time datetime="{{ $notification->created_at->toIso8601String() }}">{{ $notification->time_label }}</time>
                                     @if (! $notification->read_at)<i class="notification-unread-dot" aria-label="Belum dibaca"></i>@endif
                                 </a>

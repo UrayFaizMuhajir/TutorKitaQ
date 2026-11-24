@@ -73,6 +73,10 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 - LANJUTKAN DI SESI BARU dari bagian "Rencana kerja mandiri (Tahap 2–6)" di bawah: pemilik mengizinkan kerja mandiri tanpa
   persetujuan per bagian (berhenti hanya untuk keputusan penting baru atau risiko data). Mulai dari TAHAP 2 (TT-15).
 
+- TAHAP 2 dimulai (tanggal sistem 2026-11-24; tanggal 11-25/26 di atas berasal dari sesi sebelumnya):
+  - Jam notifikasi mengikuti zona pembaca — commit tersendiri (belum diuji browser). Migrasi aditif
+    `2026_11_27_000001_add_data_to_user_notifications` (kolom `data` JSON nullable). Backup: `database/backup-20261124-133309-sebelum-notif-tz/`.
+
 ## Daftar cek uji browser gabungan (TERTUNDA — 0.1, verifikasi tutor, pekerjaan, 1.3, 5.1, 5.2)
 Persiapan: `composer run dev`; migrasi lokal sudah dijalankan; siapkan file JPG/PNG/PDF <2 MB (kartu/dokumen) dan satu file
 .gif atau >2 MB. Uji di desktop dan mode HP (DevTools 390px). Setiap langkah: lihat Console, tidak boleh ada error merah.
@@ -125,6 +129,10 @@ G. Tahap 1: slot, katalog, sesi (2.2, 3.1, 3.2)
   8. Batalkan sesi → kursi kembali (Terisi turun); tutor dapat notifikasi. Tutor Batalkan slot (alasan) → semua siswa notifikasi.
   9. Admin nonaktifkan tutor yang punya sesi mendatang → peringatan "X sesi … Y siswa" + centang "Saya paham" wajib.
   10. Slot < 3 jam lagi tidak muncul di katalog / ditolak.
+H. Jam notifikasi mengikuti zona pembaca (Tahap 2 awal)
+  1. Siswa (WIB) memesan slot tutor → tutor membuka Notifikasi dengan zona Asia/Makassar → "Pengajuan sesi baru" berjam WITA;
+     ganti zona ke Jakarta, muat ulang 2× → notifikasi yang sama berjam WIB. Jam terima (kanan) & grup "Hari Ini" ikut zona.
+  2. Notifikasi lama (dibuat sebelum 2026-11-24) tetap tampil dengan teks lamanya.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -410,7 +418,12 @@ keputusan kecil yang diambil sendiri; daftar cek uji browser manual SINGKAT (≤
 - Riwayat git masih memuat `database/recovery-20261110-115933-users.json` (email + hash); file sudah dihapus dari
   repo tanpa menulis ulang riwayat.
 
-- Notifikasi tutor/siswa memuat jam dalam zona default (Asia/Jakarta, WIB) karena dibuat di server tanpa zona penerima.
+- `npm test` gagal di SEMUA berkas ("Cannot read properties of undefined (reading 'config')") bila dijalankan dari path
+  berhuruf drive kecil (`d:\…`, mis. Git Bash di VS Code). Jalankan dari `D:\…` (`cd "D:/Materi …/tutorkita"`) → lulus.
+- Notifikasi berjam: pakai `Notifier::send(..., [teks, Notifier::slot($a, $b), teks])` / `Notifier::at($t)` — JANGAN menempel
+  `UserTime::slotLabel()` ke teks notifikasi (itu mengunci zona pengirim). Waktu UTC di `user_notifications.data`, dirender
+  `UserNotification::displayBody()` di zona pembaca; `body` = teks cadangan zona default. Notifikasi lama (data NULL, 4 baris
+  lokal per 2026-11-24) tampil apa adanya.
 - `DashboardMockData` masih berisi `catalog_tutors`/`tutors` mock (tidak dipakai; ditimpa data asli) — hapus di 6.2.
 - Sesi yang dipindah (ganti jadwal) kembali `pending` sampai alur terima/tolak (3.3) ada.
 - Status `completed` masih otomatis dari waktu sampai TT-16 (3.4).

@@ -63,6 +63,10 @@ class SessionBookingTest extends TestCase
         $this->assertStringContainsString('Terisi 1/20', $schedule);
         $this->assertStringContainsString('Budi', $schedule);
         $this->assertDatabaseHas('user_notifications', ['user_id' => $tutorId, 'title' => 'Pengajuan sesi baru']);
+        // Notifikasi dibuat saat siswa (WIB) memesan, tetapi dirender di zona tutor yang membacanya.
+        $notifications = Str::between($this->withUnencryptedCookie('tk_tz', 'Asia/Makassar')->get('/dashboard')->getContent(), 'data-spa-page="notifications"', '</section>');
+        $this->assertStringContainsString('16.00–17.00 WITA', $notifications);
+        $this->assertStringNotContainsString('WIB', $notifications);
     }
 
     public function test_capacity_is_enforced_and_a_student_cannot_book_the_same_slot_twice(): void

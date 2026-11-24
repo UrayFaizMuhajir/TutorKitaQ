@@ -12,7 +12,7 @@ use Carbon\CarbonImmutable;
 final class SlotPlanner
 {
     /**
-     * @return list<array{starts_at: CarbonImmutable, ends_at: CarbonImmutable, ok: bool, reason: ?string, label: string}>
+     * @return list<array{starts_at: CarbonImmutable, ends_at: CarbonImmutable, ok: bool, reason: ?string, label: string, clash: ?TutorAvailabilitySlot}>
      */
     public static function plan(string $tutorId, string $date, string $startTime, string $endTime, ?string $repeatUntil, ?int $ignoreSlotId = null): array
     {
@@ -26,6 +26,7 @@ final class SlotPlanner
             $start = UserTime::toUtc($day->format('Y-m-d'), $startTime, $tz);
             $end = UserTime::toUtc($day->format('Y-m-d'), $endTime, $tz);
             $reason = null;
+            $clash = null;
             if ($start->lessThanOrEqualTo($now)) {
                 $reason = 'Sudah lewat';
             } elseif ($clash = self::clash($tutorId, $start, $end, $ignoreSlotId)) {
@@ -36,7 +37,7 @@ final class SlotPlanner
                 }
             }
             if ($reason === null) $planned[] = [$start, $end];
-            $occurrences[] = ['starts_at' => $start, 'ends_at' => $end, 'ok' => $reason === null, 'reason' => $reason, 'label' => UserTime::slotLabel($start, $end, $tz)];
+            $occurrences[] = ['starts_at' => $start, 'ends_at' => $end, 'ok' => $reason === null, 'reason' => $reason, 'label' => UserTime::slotLabel($start, $end, $tz), 'clash' => $clash];
         }
 
         return $occurrences;

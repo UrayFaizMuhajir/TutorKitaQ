@@ -52,7 +52,7 @@ final class SessionBooking
         }
 
         Notifier::send((string) $slot->tutor_id, 'session-'.$session->id.'-requested', 'Pengajuan sesi baru',
-            $studentName.' mengajukan sesi '.$session->subject.' – '.$session->topic.' pada '.UserTime::slotLabel($session->starts_at, $session->endsAt(), config('tutorkita.default_timezone')).'.', '/dashboard#schedule');
+            [$studentName.' mengajukan sesi '.$session->subject.' – '.$session->topic.' pada ', Notifier::slot($session->starts_at, $session->endsAt()), '.'], '/dashboard#schedule');
         self::notifyConflicts($studentId, $session);
 
         return $session;
@@ -69,7 +69,7 @@ final class SessionBooking
         }, 5);
         if ($session->tutor_id) {
             Notifier::send((string) $session->tutor_id, 'session-'.$session->id.'-cancelled-by-student', 'Siswa membatalkan sesi',
-                $studentName.' membatalkan sesi '.$session->subject.' pada '.UserTime::slotLabel($session->starts_at, $session->endsAt(), config('tutorkita.default_timezone')).'. Satu kursi kembali kosong.', '/dashboard#schedule');
+                [$studentName.' membatalkan sesi '.$session->subject.' pada ', Notifier::slot($session->starts_at, $session->endsAt()), '. Satu kursi kembali kosong.'], '/dashboard#schedule');
         }
     }
 
@@ -82,7 +82,7 @@ final class SessionBooking
         $slot = TutorAvailabilitySlot::query()->find($newSlotId);
         self::assertBookable($slot);
         if ((string) $slot->tutor_id !== (string) $session->tutor_id) throw new HttpException(422, 'Ganti jadwal hanya ke slot tutor yang sama.');
-        $oldLabel = UserTime::slotLabel($session->starts_at, $session->endsAt(), config('tutorkita.default_timezone'));
+        $oldTime = Notifier::slot($session->starts_at, $session->endsAt());
 
         try {
             DB::transaction(function () use ($session, $slot): void {
@@ -102,7 +102,7 @@ final class SessionBooking
         }
         $session->refresh();
         Notifier::send((string) $session->tutor_id, 'session-'.$session->id.'-rescheduled-'.$slot->id, 'Siswa mengganti jadwal sesi',
-            $studentName.' memindahkan sesi '.$session->subject.' dari '.$oldLabel.' ke '.UserTime::slotLabel($session->starts_at, $session->endsAt(), config('tutorkita.default_timezone')).'.', '/dashboard#schedule');
+            [$studentName.' memindahkan sesi '.$session->subject.' dari ', $oldTime, ' ke ', Notifier::slot($session->starts_at, $session->endsAt()), '.'], '/dashboard#schedule');
         self::notifyConflicts((string) $session->student_id, $session);
 
         return $session;
@@ -134,9 +134,12 @@ final class SessionBooking
     {
         $conflicts = self::conflictsFor(LearningSession::query()->where('student_id', $studentId)->get())[$session->id] ?? [];
         if ($conflicts === []) return;
-        $names = collect($conflicts)->map(fn (LearningSession $other): string => $other->subject.', '.UserTime::slotLabel($other->starts_at, $other->endsAt(), config('tutorkita.default_timezone')))->join('; ');
-        Notifier::send($studentId, 'session-'.$session->id.'-conflict-'.$session->starts_at->getTimestamp(), 'Jadwal bentrok',
-            'Sesi '.$session->subject.' bentrok dengan: '.$names.'. Pilih "Ganti jadwal" atau batalkan salah satu.', '/dashboard#sessions');
+        $body = ['Sesi '.$session->subject.' bentrok dengan: '];
+        foreach (array_values($conflicts) as $i => $other) {
+            array_push($body, ($i ? '; ' : '').$other->subject.', ', Notifier::slot($other->starts_at, $other->endsAt()));
+        }
+        $body[] = '. Pilih "Ganti jadwal" atau batalkan salah satu.';
+        Notifier::send($studentId, 'session-'.$session->id.'-conflict-'.$session->starts_at->getTimestamp(), 'Jadwal bentrok', $body, '/dashboard#sessions');
     }
 
     private static function assertBookable(?TutorAvailabilitySlot $slot): void
