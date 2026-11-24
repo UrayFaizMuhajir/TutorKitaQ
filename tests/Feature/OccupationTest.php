@@ -47,7 +47,7 @@ class OccupationTest extends TestCase
         // Menu profil: pekerjaan di bawah nama, peran tetap terlihat sebagai badge.
         $menu = Str::between($html, 'data-profile-menu', 'profile-menu-logout-form');
         $this->assertMatchesRegularExpression('/<strong>Gusti Prabu<\/strong><small class="profile-menu-occupation" data-user-occupation>Gojek<\/small>/', $menu);
-        $this->assertStringContainsString('<small class="profile-role-badge">Student</small>', $menu);
+        $this->assertStringContainsString('<small class="profile-role-badge">Siswa</small>', $menu);
         // Field Edit Profil terisi nilai tersimpan.
         $this->assertStringContainsString('name="occupation" value="Gojek" maxlength="60"', $html);
     }
@@ -58,7 +58,7 @@ class OccupationTest extends TestCase
         $before = file_get_contents($this->userStorePath);
 
         $html = $this->get('/dashboard')->assertOk()->getContent();
-        $this->assertStringContainsString('<span class="profile-copy"><strong>Sita</strong><small data-user-subtitle>Student</small></span>', $html);
+        $this->assertStringContainsString('<span class="profile-copy"><strong>Sita</strong><small data-user-subtitle>Siswa</small></span>', $html);
         $this->assertStringNotContainsString('data-user-occupation', $html);
         // Membuka dashboard tidak menulis apa pun ke akun.
         $this->assertSame($before, file_get_contents($this->userStorePath));
@@ -97,7 +97,7 @@ class OccupationTest extends TestCase
         $this->post(route('dashboard.profile.update'), ['name' => 'Gusti', 'occupation' => ''])->assertSessionHasNoErrors();
         $this->assertArrayNotHasKey('occupation', $this->record('gusti@example.test'));
         $this->refreshSignedInUser('gusti@example.test');
-        $this->assertStringContainsString('<small data-user-subtitle>Student</small>', $this->get('/dashboard')->getContent());
+        $this->assertStringContainsString('<small data-user-subtitle>Siswa</small>', $this->get('/dashboard')->getContent());
     }
 
     public function test_occupation_output_is_escaped(): void

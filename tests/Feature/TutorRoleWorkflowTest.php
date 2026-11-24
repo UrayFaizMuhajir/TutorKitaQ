@@ -45,7 +45,7 @@ class TutorRoleWorkflowTest extends TestCase
         $this->post('/login', ['contact' => 'sita@example.test', 'password' => 'TutorKita123!'])->assertRedirect('/dashboard');
         $this->assertDatabaseHas('user_roles', ['user_id' => '1', 'role' => 'student']);
         $this->get('/dashboard')->assertOk()->assertSee('data-spa-page="dashboard"', false)->assertSee('data-profile-toggle', false)
-            ->assertSeeText('Student')->assertSeeText('Ajukan Menjadi Tutor');
+            ->assertSeeText('Siswa')->assertDontSeeText('Student')->assertSeeText('Ajukan Menjadi Tutor');
         $this->post('/logout')->assertRedirect('/login');
     }
 

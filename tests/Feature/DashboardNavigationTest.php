@@ -48,6 +48,11 @@ class DashboardNavigationTest extends TestCase
         $this->assertSame('tutor-unverified', DashboardNavigation::forRole('tutor', false)['home']);
         $this->assertSame(DashboardNavigation::forRole('student')['pages'], DashboardNavigation::forRole('student', false)['pages']);
 
+        $this->assertSame('Siswa', DashboardNavigation::roleLabel('student'));
+        $this->assertSame('Tutor', DashboardNavigation::roleLabel('tutor'));
+        $this->assertSame('Admin', DashboardNavigation::roleLabel('admin'));
+        $this->assertSame('Siswa', DashboardNavigation::roleLabel('aneh'));
+
         foreach ([null, '', 'superadmin', 'Admin'] as $unknown) {
             $navigation = DashboardNavigation::forRole($unknown);
             $this->assertSame('student', $navigation['role']);

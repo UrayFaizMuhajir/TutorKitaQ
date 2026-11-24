@@ -42,7 +42,7 @@ class DashboardController extends Controller
             'initials' => $initials,
             'level' => 'Anggota TutorKita',
             'role' => $authenticatedUser->role ?? 'student',
-            'role_label' => ['student' => 'Student', 'tutor' => 'Tutor', 'admin' => 'Admin'][$authenticatedUser->role ?? 'student'] ?? 'Student',
+            'role_label' => DashboardNavigation::roleLabel($authenticatedUser->role ?? 'student'),
             'avatar_url' => $authenticatedUser->avatar_path ? route('dashboard.profile.photo', $authenticatedUser->getAuthIdentifier()) : null,
             'occupation' => $authenticatedUser->occupation ?: null,
         ];
@@ -288,7 +288,7 @@ class DashboardController extends Controller
         return [
             'stats' => [
                 ['label' => 'Pengajuan Tutor', 'value' => (string) $pendingApplications->count(), 'detail' => 'Menunggu pemeriksaan', 'icon' => 'graduation-cap', 'tone' => 'blue', 'target' => null],
-                ['label' => 'Siswa', 'value' => (string) ($roleCounts['student'] ?? 0), 'detail' => 'Akun berstatus Student', 'icon' => 'user', 'tone' => 'sky', 'target' => null],
+                ['label' => 'Siswa', 'value' => (string) ($roleCounts['student'] ?? 0), 'detail' => 'Akun berstatus Siswa', 'icon' => 'user', 'tone' => 'sky', 'target' => null],
                 ['label' => 'Tutor', 'value' => (string) ($roleCounts['tutor'] ?? 0), 'detail' => 'Akun berstatus Tutor', 'icon' => 'users', 'tone' => 'amber', 'target' => null],
                 ['label' => 'Admin', 'value' => (string) ($roleCounts['admin'] ?? 0), 'detail' => 'Akun berstatus Admin', 'icon' => 'check', 'tone' => 'green', 'target' => null],
             ],

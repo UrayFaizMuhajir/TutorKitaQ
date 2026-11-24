@@ -13,6 +13,14 @@ final class DashboardNavigation
 {
     public const ROLES = ['student', 'tutor', 'admin'];
 
+    /** Label peran yang ditampilkan ke pengguna (bahasa Indonesia). */
+    public const ROLE_LABELS = ['student' => 'Siswa', 'tutor' => 'Tutor', 'admin' => 'Admin'];
+
+    public static function roleLabel(?string $role): string
+    {
+        return self::ROLE_LABELS[$role] ?? self::ROLE_LABELS['student'];
+    }
+
     /**
      * @param  bool  $verifiedTutor  hanya berpengaruh untuk role tutor: tutor yang belum terverifikasi
      *                               hanya mendapat Beranda, Profil & Verifikasi, dan Notifikasi.

@@ -234,7 +234,7 @@
     <button type="button" class="role-dialog-close" aria-label="Tutup" data-role-dialog-close>×</button>
     <span class="section-kicker">BERBAGI ILMU BERSAMA TUTORKITA</span><h2 id="tutor-application-title">Ajukan Menjadi Tutor</h2>
     @if ($tutor_application?->status === 'pending')
-        <p class="role-state is-pending">Pengajuanmu sedang diperiksa admin. Role akun tetap Student sampai disetujui.</p>
+        <p class="role-state is-pending">Pengajuanmu sedang diperiksa admin. Peran akun tetap Siswa sampai disetujui.</p>
     @elseif ($tutor_application?->status === 'approved')
         <p class="role-state is-approved">Pengajuan sudah disetujui. Akunmu sekarang berstatus Tutor.</p>
     @else
@@ -261,7 +261,7 @@
 
 @if ($user['role'] === 'admin')
 {{-- Verifikasi Tutor kini halaman sendiri (dashboard/pages/admin-tutor-verifications.blade.php). --}}
-<dialog class="role-dialog" data-admin-users-dialog aria-labelledby="admin-users-title"><button type="button" class="role-dialog-close" aria-label="Tutup" data-role-dialog-close>×</button><span class="section-kicker">PANEL ADMIN</span><h2 id="admin-users-title">Pengelolaan Pengguna</h2><p class="role-dialog-lead">Daftar akun aplikasi dan role aktifnya.</p><div class="admin-user-list">@foreach ($admin_user_rows as $adminUser)<div><p class="admin-user-name"><strong>{{ $adminUser['name'] }}</strong>@if (! empty($adminUser['occupation']))<small class="admin-user-occupation">{{ $adminUser['occupation'] }}</small>@endif</p><span>{{ $adminUser['contact'] }}</span><em>{{ ucfirst($adminUser['role']) }}</em></div>@endforeach</div><small>Promosi admin hanya tersedia lewat perintah Artisan interaktif yang meminta konfirmasi.</small></dialog>
+<dialog class="role-dialog" data-admin-users-dialog aria-labelledby="admin-users-title"><button type="button" class="role-dialog-close" aria-label="Tutup" data-role-dialog-close>×</button><span class="section-kicker">PANEL ADMIN</span><h2 id="admin-users-title">Pengelolaan Pengguna</h2><p class="role-dialog-lead">Daftar akun aplikasi dan role aktifnya.</p><div class="admin-user-list">@foreach ($admin_user_rows as $adminUser)<div><p class="admin-user-name"><strong>{{ $adminUser['name'] }}</strong>@if (! empty($adminUser['occupation']))<small class="admin-user-occupation">{{ $adminUser['occupation'] }}</small>@endif</p><span>{{ $adminUser['contact'] }}</span><em>{{ \App\Support\DashboardNavigation::roleLabel($adminUser['role']) }}</em></div>@endforeach</div><small>Promosi admin hanya tersedia lewat perintah Artisan interaktif yang meminta konfirmasi.</small></dialog>
 @endif
 
 @if (in_array('verification', $visiblePages, true) && ! empty($tutor_verification))
