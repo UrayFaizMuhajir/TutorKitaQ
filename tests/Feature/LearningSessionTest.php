@@ -11,6 +11,7 @@ use Tests\TestCase;
 class LearningSessionTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CreatesVerifiedStudent;
 
     private string $userStorePath;
 
@@ -35,6 +36,8 @@ class LearningSessionTest extends TestCase
     public function test_student_can_request_a_session_and_it_is_saved_without_a_fake_meeting_link(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');
+        // Sejak verifikasi siswa (ROADMAP 5.1), mengajukan sesi butuh siswa terverifikasi.
+        $this->markStudentVerified((string) auth()->id());
 
         $response = $this->postJson(route('dashboard.sessions.store'), [
             'tutor_name' => 'Alya Putri',
@@ -96,6 +99,8 @@ class LearningSessionTest extends TestCase
     public function test_unavailable_tutors_and_unmatched_subjects_cannot_be_requested(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');
+        // Sejak verifikasi siswa (ROADMAP 5.1), mengajukan sesi butuh siswa terverifikasi.
+        $this->markStudentVerified((string) auth()->id());
         $request = [
             'subject' => 'Bahasa Inggris',
             'topic' => 'Percakapan sehari-hari',
@@ -117,6 +122,8 @@ class LearningSessionTest extends TestCase
     public function test_student_sees_session_request_controls(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');
+        // Sejak verifikasi siswa (ROADMAP 5.1), kontrol pengajuan hanya untuk siswa terverifikasi.
+        $this->markStudentVerified((string) auth()->id());
 
         $this->get('/dashboard')->assertOk()
             ->assertSee('data-can-manage-sessions="1"', false)

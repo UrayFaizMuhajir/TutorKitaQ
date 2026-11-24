@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'tutor.verified' => \App\Http\Middleware\EnsureVerifiedTutor::class,
+            'student.verified' => \App\Http\Middleware\EnsureVerifiedStudent::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

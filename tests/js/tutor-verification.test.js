@@ -238,6 +238,36 @@ describe('Dashboard verifikasi tutor', () => {
         expect(consoleError).not.toHaveBeenCalled();
     });
 
+    it('siswa belum terverifikasi: tombol pengajuan sesi nonaktif, tanpa dialog, dan penjelasan membuka Profil & Verifikasi', async () => {
+        const studentHtml = shell(
+            [['dashboard', 'Beranda'], ['sessions', 'Sesi Belajar'], ['student-verification', 'Profil & Verifikasi']],
+            `<div class="spa-page" data-spa-page="dashboard"><button class="button" type="button" data-page-link="student-verification">Profil &amp; Verifikasi</button></div>
+             <section class="spa-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="1" hidden>
+                <button type="button" data-session-filter="all">Semua Sesi</button>
+                <button class="session-new-button" type="button" disabled data-session-request-locked>Ajukan Sesi Baru</button>
+                <h2 data-session-heading></h2><p data-session-description></p><strong data-session-count></strong>
+                <div data-session-list><div data-session-empty></div><div data-session-filter-empty hidden></div></div>
+                <div data-session-verification-note><button type="button" class="button" data-page-link="student-verification">Buka Profil &amp; Verifikasi</button></div>
+             </section>
+             <section class="spa-page" data-spa-page="student-verification" data-student-verification hidden>
+                <form class="role-form"><input type="file" data-student-card-input data-document-label="Dokumen pendukung"><p data-student-card-error hidden></p></form>
+             </section>`,
+        );
+        await load(studentHtml, 'dashboard', '#sessions');
+        expect(visiblePage()).toBe('sessions');
+        expect(document.querySelector('[data-session-request-locked]').disabled).toBe(true);
+        expect(document.querySelector('[data-session-create-dialog]')).toBeNull();
+
+        document.querySelector('[data-session-verification-note] [data-page-link]').click();
+        expect(visiblePage()).toBe('student-verification');
+        expect(document.querySelector('[data-page-heading]').textContent).toBe('Profil & Verifikasi');
+
+        const input = document.querySelector('[data-student-card-input]');
+        chooseFile(input, new File(['GIF89a'], 'kartu.gif', { type: 'image/gif' }));
+        expect(document.querySelector('[data-student-card-error]').textContent).toBe('Dokumen pendukung harus berupa JPG, PNG, atau PDF.');
+        expect(consoleError).not.toHaveBeenCalled();
+    });
+
     it('admin: tombol beranda membuka halaman Verifikasi Tutor', async () => {
         await load(adminHtml(), 'dashboard');
         await flush();

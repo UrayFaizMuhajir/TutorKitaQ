@@ -37,10 +37,13 @@
 @endif
 
 @php
-    $canRequestSessions = ($user['role'] ?? 'student') === 'student';
+    // Akun siswa boleh membatalkan sesinya; MENGAJUKAN sesi baru hanya bila profil siswa terverifikasi (ROADMAP 5.1).
+    $isStudentAccount = ($user['role'] ?? 'student') === 'student';
+    $canRequestSessions = $isStudentAccount && (($student_verification['status'] ?? null) === 'verified');
+    $sessionRequestLocked = $isStudentAccount && ! $canRequestSessions;
 @endphp
 @if (in_array('sessions', $visiblePages, true))
-<section class="dashboard-page spa-page sessions-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="{{ $canRequestSessions ? '1' : '0' }}" data-store-url="{{ route('dashboard.sessions.store') }}" data-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => '__ID__']) }}" data-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => '__ID__']) }}" hidden>
+<section class="dashboard-page spa-page sessions-page" data-spa-page="sessions" data-session-config data-can-manage-sessions="{{ $isStudentAccount ? '1' : '0' }}" data-store-url="{{ route('dashboard.sessions.store') }}" data-detail-url="{{ route('dashboard.sessions.show', ['learningSession' => '__ID__']) }}" data-cancel-url="{{ route('dashboard.sessions.cancel', ['learningSession' => '__ID__']) }}" hidden>
     <div class="sessions-heading"><div><span class="section-kicker">RUANG BELAJARMU</span><h1>Sesi <em>Belajar</em></h1></div><span class="session-total"><strong>{{ $learning_sessions->count() }}</strong> sesi tercatat</span></div>
     <div class="sessions-layout">
         <div class="sessions-main-column">
@@ -50,7 +53,7 @@
                 <button type="button" role="tab" aria-selected="false" data-session-filter="completed"><x-icon name="check"/> Sesi Selesai</button>
                 <button type="button" role="tab" aria-selected="false" data-session-filter="cancelled"><x-icon name="x"/> Sesi Dibatalkan</button>
                 <button type="button" role="tab" aria-selected="false" data-session-filter="pending"><x-icon name="document"/> Pengajuan Sesi</button>
-                @if ($canRequestSessions)<button class="session-new-button" type="button" data-session-dialog-open><x-icon name="plus"/> Ajukan Sesi Baru</button>@endif
+                @if ($canRequestSessions)<button class="session-new-button" type="button" data-session-dialog-open><x-icon name="plus"/> Ajukan Sesi Baru</button>@elseif ($sessionRequestLocked)<button class="session-new-button" type="button" disabled aria-describedby="session-verification-note" data-session-request-locked><x-icon name="plus"/> Ajukan Sesi Baru</button>@endif
             </nav>
             <div class="session-list-heading"><div><h2 data-session-heading>Semua Sesi</h2><p data-session-description>Semua sesi belajarmu: mendatang, selesai, dan dibatalkan.</p></div><span class="session-filter-count" aria-live="polite"><strong data-session-count>{{ $learning_sessions->count() }}</strong> sesi</span></div>
             <div class="session-list" data-session-list>
@@ -80,6 +83,7 @@
                     <div class="schedule-empty"><span class="today-session-icon"><x-icon name="calendar"/></span><p>Jadwal minggu ini akan muncul setelah sesi dikonfirmasi.</p></div>
                 @endforelse
             </section>
+            @if ($sessionRequestLocked)<div class="session-verification-note" id="session-verification-note" data-session-verification-note><strong>Verifikasi profil siswa dulu</strong><p>Pengajuan sesi dibuka setelah admin memverifikasi profil dan dokumen pendukungmu. Status sekarang: {{ $student_verification['label'] ?? 'Belum lengkap' }}.</p><button type="button" class="button button-primary" data-page-link="student-verification">Buka Profil &amp; Verifikasi</button></div>@endif
             @if ($canRequestSessions)<button class="session-promo-card" type="button" data-session-dialog-open><span class="session-promo-icon"><x-icon name="graduation-cap"/></span><span><strong>Ajukan Sesi Belajar Baru</strong><small>Temukan tutor dan pilih jadwal yang sesuai dengan waktu luangmu.</small></span><i><x-icon name="arrow-right"/></i></button>@endif
         </aside>
     </div>
@@ -266,6 +270,9 @@
 
 @if (in_array('verification', $visiblePages, true) && ! empty($tutor_verification))
     @include('dashboard.pages.tutor-verification')
+@endif
+@if (in_array('student-verification', $visiblePages, true) && ! empty($student_verification))
+    @include('dashboard.pages.student-verification')
 @endif
 @if (in_array('tutor-verifications', $visiblePages, true))
     @include('dashboard.pages.admin-tutor-verifications')

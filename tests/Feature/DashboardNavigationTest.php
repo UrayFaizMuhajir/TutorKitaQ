@@ -38,7 +38,8 @@ class DashboardNavigationTest extends TestCase
 
     public function test_menu_definition_is_a_single_source_per_role_and_unknown_roles_fall_back_to_student(): void
     {
-        $this->assertSame(['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history'], DashboardNavigation::forRole('student')['pages']);
+        // Sejak verifikasi siswa (ROADMAP 5.1), menu Siswa punya item ke-8: Profil & Verifikasi.
+        $this->assertSame(['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history', 'student-verification'], DashboardNavigation::forRole('student')['pages']);
         $this->assertSame(['dashboard', 'materials', 'notifications'], DashboardNavigation::forRole('tutor')['pages']);
         // Sejak verifikasi tutor: Verifikasi Tutor jadi halaman; Pengguna tetap dialog.
         $this->assertSame(['dashboard', 'tutor-verifications', 'notifications'], DashboardNavigation::forRole('admin')['pages']);
@@ -67,7 +68,7 @@ class DashboardNavigationTest extends TestCase
         $html = $this->get('/dashboard')->assertOk()->getContent();
         $sidebar = $this->sidebar($html);
 
-        foreach (['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history'] as $page) {
+        foreach (['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history', 'student-verification'] as $page) {
             $this->assertStringContainsString('data-page-link="'.$page.'"', $sidebar);
             $this->assertStringContainsString('data-spa-page="'.$page.'"', $html);
         }

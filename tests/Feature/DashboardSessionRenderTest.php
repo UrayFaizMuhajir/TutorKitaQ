@@ -16,6 +16,7 @@ use Tests\TestCase;
 class DashboardSessionRenderTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CreatesVerifiedStudent;
 
     private string $userStorePath;
 
@@ -40,6 +41,8 @@ class DashboardSessionRenderTest extends TestCase
     public function test_session_form_hooks_do_not_collide_with_session_card_attributes(): void
     {
         $this->registerAndSignIn('Budi', 'budi@test.com');
+        // Sejak verifikasi siswa (ROADMAP 5.1), form pengajuan hanya dirender untuk siswa terverifikasi.
+        $this->markStudentVerified((string) auth()->id());
         $this->createSessionFor((string) auth()->id());
 
         $html = $this->get('/dashboard')->assertOk()->assertSee('data-session-card', false)->getContent();

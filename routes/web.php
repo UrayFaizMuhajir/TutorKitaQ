@@ -10,6 +10,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\AdminTutorController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\StudentVerificationController;
 use App\Http\Controllers\SubjectsController;
 use App\Http\Controllers\TutorApplicationController;
 use App\Http\Controllers\TutorVerificationController;
@@ -28,7 +29,8 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/dashboard/sessions/{learningSession}', [LearningSessionController::class, 'show'])->name('dashboard.sessions.show');
-    Route::post('/dashboard/sessions', [LearningSessionController::class, 'store'])->middleware('role:student')->name('dashboard.sessions.store');
+    // Mengajukan sesi: hanya siswa terverifikasi (ROADMAP 5.1). Membatalkan sesi tetap boleh.
+    Route::post('/dashboard/sessions', [LearningSessionController::class, 'store'])->middleware(['role:student', 'student.verified'])->name('dashboard.sessions.store');
     Route::post('/dashboard/sessions/{learningSession}/cancel', [LearningSessionController::class, 'cancel'])->middleware('role:student')->name('dashboard.sessions.cancel');
     Route::get('/dashboard/materials/{learningMaterial}', [LearningMaterialController::class, 'show'])->name('dashboard.materials.show');
     // Mengelola materi/tugas: hanya tutor terverifikasi (cek role + verifikasi di middleware tutor.verified).
@@ -65,6 +67,15 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/student-card', [TutorVerificationController::class, 'ownCard'])->name('student-card.show');
         Route::post('/submit', [TutorVerificationController::class, 'submit'])->name('submit');
     });
+    // Profil & verifikasi siswa (ROADMAP 5.1). Data ini tidak pernah untuk tutor.
+    Route::middleware('role:student')->prefix('/dashboard/student-verification')->name('dashboard.student-verification.')->group(function (): void {
+        Route::post('/profile', [StudentVerificationController::class, 'saveProfile'])->name('profile');
+        Route::post('/document', [StudentVerificationController::class, 'uploadDocument'])->name('document.store');
+        Route::get('/document', [StudentVerificationController::class, 'ownDocument'])->name('document.show');
+        Route::post('/submit', [StudentVerificationController::class, 'submit'])->name('submit');
+    });
+    // Dokumen siswa: hanya Admin atau pemiliknya (dicek di controller).
+    Route::get('/dashboard/student-profiles/{studentProfile}/document', [StudentVerificationController::class, 'profileDocument'])->name('dashboard.student-profiles.document');
     // Kartu mahasiswa pada pengajuan: hanya Admin atau pemilik pengajuan (dicek di controller).
     Route::get('/dashboard/tutor-applications/{tutorApplication}/student-card', [TutorVerificationController::class, 'applicationCard'])->name('dashboard.tutor-applications.student-card');
 });

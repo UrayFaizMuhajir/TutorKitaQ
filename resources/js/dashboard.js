@@ -26,7 +26,7 @@ if (dashboard) {
     const levelFilter = document.querySelector('#subject-level-filter');
     // Judul halaman diambil dari menu sidebar yang dirender server (App\Support\DashboardNavigation);
     // daftar di bawah hanya cadangan bila atribut judul tidak ada.
-    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor' };
+    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor', 'student-verification': 'Profil & Verifikasi', 'student-verifications': 'Verifikasi Siswa' };
     document.querySelectorAll('[data-sidebar-nav] [data-page-link][data-page-title]').forEach((link) => { pageTitles[link.dataset.pageLink] = link.dataset.pageTitle; });
     // Halaman yang tidak ada di menu role tidak dirender, jadi tautan/hash ke sana dialihkan ke Beranda.
     const isAvailablePage = (page) => Boolean(pageTitles[page]) && Boolean(document.querySelector(`[data-spa-page="${page}"]`));
@@ -1574,9 +1574,10 @@ if (dashboard) {
     document.querySelectorAll('[data-student-card-input]').forEach((input) => input.addEventListener('change', () => {
         const file = input.files?.[0];
         const error = input.closest('form')?.querySelector('[data-student-card-error]');
+        const label = input.dataset.documentLabel || 'Kartu mahasiswa';
         let message = '';
-        if (file && !studentCardTypes.includes(file.type)) message = 'Kartu mahasiswa harus berupa JPG, PNG, atau PDF.';
-        else if (file && file.size > studentCardMaxBytes) message = 'Ukuran kartu mahasiswa maksimal 2 MB.';
+        if (file && !studentCardTypes.includes(file.type)) message = `${label} harus berupa JPG, PNG, atau PDF.`;
+        else if (file && file.size > studentCardMaxBytes) message = `Ukuran ${label.toLocaleLowerCase('id')} maksimal 2 MB.`;
         if (message) input.value = '';
         if (error) { error.textContent = message; error.hidden = !message; }
         if (message) showToast(message);

@@ -14,6 +14,23 @@
         </div>
     </div>
 
+    @if (($student_verification['status'] ?? 'verified') !== 'verified')
+        {{-- ROADMAP 5.1: ajakan melengkapi profil siswa; pengajuan sesi terkunci sampai terverifikasi. --}}
+        <section class="panel role-home-panel student-verification-banner" aria-labelledby="student-verification-home" data-student-verification-banner>
+            <div class="panel-heading">
+                <div><span class="section-kicker">VERIFIKASI SISWA</span><h2 id="student-verification-home">Lengkapi profil untuk mengajukan sesi</h2><p>Status: <span class="verification-badge is-{{ $student_verification['status'] }}">{{ $student_verification['label'] }}</span></p></div>
+                <button class="button button-primary" type="button" data-page-link="student-verification">Profil &amp; Verifikasi</button>
+            </div>
+            @if ($student_verification['status'] === 'rejected')
+                <p class="verification-alert is-rejected" role="status"><strong>Ditolak admin.</strong> Alasan: {{ $student_verification['rejection_reason'] }}</p>
+            @elseif ($student_verification['status'] === 'pending')
+                <p class="verification-alert is-pending" role="status">Datamu sedang diperiksa admin.</p>
+            @else
+                <p class="verification-note">Materi, Mata Pelajaranku, dan tugas tetap bisa kamu pakai sekarang. Pengajuan sesi dibuka setelah admin memverifikasi profil dan dokumen pendukungmu.</p>
+            @endif
+        </section>
+    @endif
+
     <section class="stats-grid" aria-label="Ringkasan belajar">
         @foreach ($stats as $stat)
             <x-dashboard.stat-card :stat="$stat" />

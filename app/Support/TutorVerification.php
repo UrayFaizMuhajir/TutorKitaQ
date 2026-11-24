@@ -19,16 +19,11 @@ use Illuminate\Validation\ValidationException;
  */
 final class TutorVerification
 {
-    public const STATUS_LABELS = [
-        'incomplete' => 'Belum lengkap',
-        'pending' => 'Menunggu verifikasi',
-        'verified' => 'Terverifikasi',
-        'rejected' => 'Ditolak',
-    ];
+    public const STATUS_LABELS = VerificationStatus::LABELS;
 
     public const EDUCATION_LEVELS = ['SMA/SMK', 'Diploma', 'S1', 'S2', 'S3'];
 
-    public const CARD_MAX_KILOBYTES = 2048;
+    public const CARD_MAX_KILOBYTES = PrivateDocument::MAX_KILOBYTES;
 
     public static function isVerified(string $userId): bool
     {
@@ -57,28 +52,21 @@ final class TutorVerification
         };
     }
 
-    /** Aturan validasi kartu mahasiswa: diperiksa dari isi file (mimetypes), bukan hanya ekstensi. */
+    /** Aturan validasi kartu mahasiswa: pola dokumen privat bersama (isi file, JPG/PNG/PDF, maks. 2 MB). */
     public static function cardRules(): array
     {
-        return ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'mimetypes:image/jpeg,image/png,application/pdf', 'max:'.self::CARD_MAX_KILOBYTES];
+        return PrivateDocument::rules();
     }
 
     public static function cardMessages(string $field = 'student_card'): array
     {
-        return [
-            $field.'.required' => 'Unggah kartu mahasiswa (JPG, PNG, atau PDF).',
-            $field.'.file' => 'Unggah kartu mahasiswa (JPG, PNG, atau PDF).',
-            $field.'.mimes' => 'Kartu mahasiswa harus berupa JPG, PNG, atau PDF.',
-            $field.'.mimetypes' => 'Kartu mahasiswa harus berupa JPG, PNG, atau PDF.',
-            $field.'.max' => 'Ukuran kartu mahasiswa maksimal 2 MB.',
-            $field.'.uploaded' => 'Kartu mahasiswa gagal diunggah. Pastikan ukurannya maksimal 2 MB.',
-        ];
+        return PrivateDocument::messages($field, 'kartu mahasiswa');
     }
 
     /** Disimpan di disk privat `local` (storage/app/private), tidak pernah di folder publik. */
     public static function storeCard(UploadedFile $file, string $userId): string
     {
-        return $file->store('tutor-documents/'.$userId, 'local');
+        return PrivateDocument::store($file, 'tutor-documents/'.$userId);
     }
 
     /** Hapus file kartu lama hanya bila tidak lagi dirujuk profil atau pengajuan mana pun. */
@@ -92,7 +80,7 @@ final class TutorVerification
 
     public static function isPdf(?string $path): bool
     {
-        return is_string($path) && str_ends_with(strtolower($path), '.pdf');
+        return PrivateDocument::isPdf($path);
     }
 
     /** @return list<string> label isian profil yang masih kosong */

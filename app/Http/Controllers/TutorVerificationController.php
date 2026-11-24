@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TutorApplication;
 use App\Models\TutorProfile;
 use App\Support\LocalUserStore;
+use App\Support\PrivateDocument;
 use App\Support\TutorVerification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -156,13 +157,6 @@ class TutorVerificationController extends Controller
 
     private function streamCard(?string $path): StreamedResponse
     {
-        abort_unless(is_string($path) && $path !== '' && Storage::disk('local')->exists($path), 404, 'Kartu mahasiswa tidak ditemukan.');
-
-        return Storage::disk('local')->response($path, 'kartu-mahasiswa.'.pathinfo($path, PATHINFO_EXTENSION), [
-            'Cache-Control' => 'private, no-store',
-            'X-Content-Type-Options' => 'nosniff',
-            // Cegah skrip di dalam PDF/berkas berjalan dengan origin aplikasi.
-            'Content-Security-Policy' => "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
-        ], 'inline');
+        return PrivateDocument::response($path, 'kartu-mahasiswa');
     }
 }

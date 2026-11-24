@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\DashboardMockData;
 use App\Support\DashboardNavigation;
+use App\Support\StudentVerification;
 use App\Support\TutorVerification;
 use App\Models\AssignmentSubmission;
 use App\Models\LearningMaterial;
@@ -55,6 +56,8 @@ class DashboardController extends Controller
         $verifiedTutor = $isTutor && TutorVerification::isVerified($userId);
         $navigation = DashboardNavigation::forRole($dashboardData['user']['role'], $verifiedTutor);
         $dashboardData['tutor_verified'] = $verifiedTutor;
+        // ROADMAP 5.1: status verifikasi siswa (data ini hanya untuk siswa itu sendiri & admin).
+        $dashboardData['student_verification'] = $dashboardData['user']['role'] === 'student' ? StudentVerification::stateFor($userId) : null;
         // ROADMAP 1.3: tutor terverifikasi yang dinonaktifkan admin tetap bisa membaca, tetapi tidak mengelola.
         $tutorActive = $verifiedTutor && TutorVerification::isActive($userId);
         $dashboardData['tutor_can_manage'] = $tutorActive;

@@ -127,7 +127,12 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 - 4.3 Siswa melihat/mengunduh materi + gate role — **Ada, tanpa gate role**.
 
 ### Tahap 5: Siswa
-- 5.1 Profil siswa lengkap + dokumen pendukung privat — **Belum**. Sebelum mulai, TANYAKAN apakah verifikasi wajib sebelum memesan sesi (kalau ya, 5.1–5.2 sebelum Tahap 3).
+- 5.1 Profil siswa lengkap + dokumen pendukung privat — **Selesai, uji browser tertunda** (2026-11-25). Keputusan pemilik:
+  verifikasi WAJIB sebelum mengajukan sesi (middleware `student.verified` di `sessions.store`; materi/mapel/tugas tetap
+  bebas); akun siswa lama (id 1, id 4) wajib melengkapi dulu — tanpa backfill; siswa terverifikasi boleh ubah profil
+  tanpa verifikasi ulang, dokumen terkunci; isian "Kecamatan / Kota" (maks. 100), BUKAN alamat rumah.
+  Tabel `student_profiles` + `student_verification_reviews`; `App\Support\StudentVerification`, `StudentVerificationController`,
+  dokumen privat `student-documents/{id}` lewat `App\Support\PrivateDocument` (pola sama dengan kartu mahasiswa).
 - 5.2 Admin memverifikasi siswa — **Belum**.
 - 5.3 Rating & ulasan (hanya sesi selesai dari 3.4, satu per sesi) — **Belum**.
 - 5.4 Tutor lihat ulasan; Admin sembunyikan/tampilkan + alasan; rating katalog dari ulasan tak tersembunyi — **Belum**.
@@ -146,7 +151,7 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 | TT-5 | Melihat, mencari, dan menghapus mapel (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
 | TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | ✅ (2026-11-24, uji browser tertunda) | 1.2 |
 | TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | ✅ (2026-11-25, uji browser tertunda) | 1.2, 1.3 |
-| TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ❌ | 5.1 |
+| TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ✅ (2026-11-25, uji browser tertunda) | 5.1 |
 | TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ❌ (hanya daftar read-only) | 1.4, 5.2 |
 | TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |
 | TT-8 | [Tutor] Melihat, mengubah, dan menghapus slot jadwal | In Progress | ❌ | 2.2 |
@@ -214,3 +219,9 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
    dan punya tes.
 9. Kalau permintaan ambigu atau berisiko, tanya dulu sebelum mengerjakan.
 10. Saat diminta mengerjakan langkah ROADMAP, jelaskan rencana singkat dulu (file, tabel/migrasi, tes) dan tunggu persetujuan.
+11. PRIVASI DATA ANAK: data profil siswa (`student_profiles`: wali, kontak wali, kecamatan/kota, sekolah, kelas,
+    dokumen pendukung) HANYA boleh terlihat oleh siswa itu sendiri dan Admin. JANGAN PERNAH dikirim/ditampilkan ke tutor
+    — termasuk nanti di katalog tutor, pengajuan/detail sesi, presensi, tugas, notifikasi, atau JSON apa pun. Tutor cukup
+    menerima nama siswa (dan data sesi yang memang perlu). Dokumen siswa hanya lewat route yang mengecek Admin/pemilik.
+    Dijaga oleh `StudentVerificationTest::test_student_private_data_never_reaches_tutors` — tambahkan asersi serupa
+    setiap kali fitur baru menampilkan data siswa ke tutor. Jangan pernah meminta alamat lengkap rumah.

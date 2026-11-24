@@ -79,6 +79,7 @@ final class DashboardNavigation
                     self::page('assignments', 'check', 'Tugas & Penilaian'),
                     self::page('notifications', 'bell', 'Notifikasi'),
                     self::page('history', 'clock', 'Riwayat Sesi'),
+                    self::page('student-verification', 'user', 'Profil & Verifikasi'),
                 ],
             ],
         };
