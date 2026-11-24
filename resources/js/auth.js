@@ -76,6 +76,14 @@ if (authForm) {
         });
     });
 
+    // Pilihan daftar sebagai Siswa/Tutor: catatan verifikasi hanya muncul untuk Tutor.
+    const tutorHint = authForm.querySelector('[data-tutor-hint]');
+    const syncAccountType = () => {
+        if (tutorHint) tutorHint.hidden = authForm.elements.namedItem('account_type')?.value !== 'tutor';
+    };
+    authForm.querySelectorAll('input[name="account_type"]').forEach((radio) => radio.addEventListener('change', syncAccountType));
+    syncAccountType();
+
     authForm.addEventListener('submit', (event) => {
         if (!validate()) {
             event.preventDefault();

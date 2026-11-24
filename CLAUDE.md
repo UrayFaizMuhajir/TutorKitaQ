@@ -18,7 +18,8 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
 ## Data lokal (data uji, JANGAN di-commit)
 - `database/database.sqlite` — database uji lokal.
 - `storage/app/private/users.json` — akun uji (LocalUserStore) beserta hash password.
-- `storage/app/private/*` lainnya — unggahan (foto profil, PDF materi, jawaban tugas).
+- `storage/app/private/*` lainnya — unggahan (foto profil, PDF materi, jawaban tugas, kartu mahasiswa `tutor-documents/`).
+- users.json kini bisa berisi kunci opsional `occupation` (Pekerjaan, maks. 60), hanya bila pemilik akun mengisinya.
 - `database/*.sqlite*`, `database/backup-*/`, `database/recovery-*.json` — backup/recovery.
 - Semua di atas di-ignore git. Jangan pernah `git add -f` file-file ini. Akun lama di users.json tidak boleh diubah/dihapus.
 - Akun uji (password TIDAK ditulis di repo; tanyakan pemilik proyek):
@@ -58,7 +59,14 @@ Root proyek = folder ini (git root). GitHub: https://github.com/attagetto/tutork
   **UJI BROWSER 0.1 MASIH TERTUNDA** — pemilik akan menguji dengan daftar cek 3 akun (admin/tutor/siswa, tombol ⌄,
   tab "Semua Sesi"). Bila ada temuan, perbaiki di commit terpisah. Keputusan pemilik: menu Tutor = Beranda, Materi,
   Notifikasi (Sesi/Tugas ditambah di 3.3/4.1); aksi Admin hanya di sidebar; TT-25 ditunda.
-- Langkah berikutnya: fitur pilih role saat daftar + verifikasi tutor (bagian ROADMAP 1.2; TT-4, TT-6) — rencana dulu.
+- Fitur "daftar sebagai tutor + verifikasi tutor + kolom pekerjaan" dikerjakan dan di-commit 2026-11-24
+  ("Daftar sebagai tutor, verifikasi tutor oleh admin, dan kolom pekerjaan (belum diuji browser)").
+  **UJI BROWSER MASIH TERTUNDA** — digabung dengan uji 0.1 (daftar cek gabungan ada di percakapan 2026-11-24).
+  Keputusan pemilik: isian wajib = pendidikan, tahun lulus, bio ≥20, kampus, prodi, mapel, foto, kartu; siswa yang
+  mengajukan juga wajib kartu; Verifikasi Tutor = halaman (bukan dialog); tutor terverifikasi boleh ubah profil tanpa
+  verifikasi ulang, tetapi kartu terkunci. Backup sebelum migrasi: `database/backup-20261124-092124/`.
+- Langkah berikutnya: setelah uji browser gabungan oke → ROADMAP 0.2 (sisa: route materi baca/tugas siswa/mapel) atau
+  1.2 sisa (pencarian pengajuan) — rencana dulu.
 
 ## Arsitektur
 - Akun (id, nama, email/HP, hash password, avatar_path) ada di `storage/app/private/users.json` lewat
@@ -91,8 +99,13 @@ Urutan: Admin → Tutor → Siswa, menghormati ketergantungan logis.
 
 ### Tahap 1: Admin
 - 1.1 Katalog mapel & jenjang (CRUD, jenjang per mapel, cari; mapel terpakai hanya diarsip) — **Belum** (mapel hanya dari seeder).
-- 1.2 Pengajuan tutor lengkap (unggah kartu mahasiswa privat; daftar + filter + cari; detail & pratinjau aman; setujui/tolak) — **Sebagian** (setujui/tolak ada di `TutorApplicationController::decide`; perluas, jangan tulis ulang).
-- 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Belum** (`updateProfile` memaksa `is_active = true`).
+- 1.2 Pengajuan tutor lengkap (unggah kartu mahasiswa privat; daftar + filter + cari; detail & pratinjau aman; setujui/tolak) — **Hampir selesai, uji browser tertunda**:
+  daftar sebagai tutor (`account_type` student|tutor), halaman Profil & Verifikasi (`TutorVerificationController`),
+  kartu privat `tutor-documents/{id}` (route hanya Admin/pemilik, header nosniff + CSP sandbox), halaman admin
+  Verifikasi Tutor + filter status, `decide` menerima pemohon siswa/tutor. Status = `tutor_applications.status`
+  (`App\Support\TutorVerification`); middleware `tutor.verified` di route tulis materi/tugas. **Belum: pencarian pengajuan.**
+- 1.3 Kelola tutor (daftar, nonaktif/aktif + alasan + audit; tutor nonaktif tak bisa kelola materi/tugas; notifikasi) — **Belum**
+  (`is_active` kini hanya diisi true saat admin menyetujui verifikasi; `updateProfile` tidak lagi memaksanya).
 - 1.4 Kelola pengguna (daftar, cari, filter role, detail; nonaktifkan akun = tak bisa login; perbaiki N+1) — **Sebagian** (dialog daftar read-only, N+1).
 
 ### Tahap 2: Tutor
@@ -129,8 +142,8 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 | TT-2 | Fitur login dan logout | Done | ✅ (keamanan di 0.3) | 0.3 |
 | TT-3 | Menambah dan mengubah mapel & jenjang (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
 | TT-5 | Melihat, mencari, dan menghapus mapel (= "Mata Pelajaranku" siswa) | Done | ✅ | — (selesai) |
-| TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | 🟡 tanpa kartu mahasiswa | 1.2, 2.1 |
-| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | 🟡 tanpa nonaktifkan | 1.2, 1.3 |
+| TT-4 | [Tutor] Melengkapi profil dan mengunggah kartu mahasiswa | Done | ✅ (2026-11-24, uji browser tertunda) | 1.2 |
+| TT-6 | [Admin] Menyetujui, menolak, atau menonaktifkan tutor | Done | 🟡 setujui/tolak ✅; nonaktifkan belum | 1.2, 1.3 |
 | TT-9 | [Siswa] Melengkapi profil dan mengunggah dokumen pendukung | Done | ❌ | 5.1 |
 | TT-10 | [Admin] Melihat, mencari, dan memverifikasi siswa | To Do | ❌ (hanya daftar read-only) | 1.4, 5.2 |
 | TT-7 | [Tutor] Menambah slot jadwal ketersediaan | In Progress | ❌ (hanya teks `availability`) | 2.2 |
@@ -159,7 +172,11 @@ Kode tetap acuan. ✅ selesai, 🟡 sebagian, ❌ belum. TT-14, TT-23, TT-24 tid
 ## Masalah yang diketahui
 - Pesan login membocorkan akun terdaftar ("belum terdaftar" vs "password salah") — ROADMAP 0.3.
 - Login tanpa rate limit/throttle — ROADMAP 0.3.
-- `updateProfile` selalu mengisi `tutor_profiles.is_active = true` — ROADMAP 1.3.
+- Label peran siswa masih "Student" (bukan "Siswa") di topbar/sidebar/badge; belum diubah agar tes & tampilan lama stabil.
+- `UploadedFile::fake()` menebak MIME dari NAMA file; untuk menguji validasi isi file (mis. .exe bernama .pdf) pakai
+  `new UploadedFile($path, $name, null, null, true)` (lihat `TutorVerificationTest::realUpload`).
+- Pendaftaran kini membuat baris `user_roles` saat itu juga (bukan saat login pertama); mengubah `role` di users.json
+  tidak lagi mengubah role akun.
 - Status sesi `completed` dihitung otomatis dari waktu, bukan ditandai tutor — ROADMAP 3.4.
 - Mapel/jenjang di `learning_materials` dan `learning_sessions` disimpan sebagai teks, bukan FK; materi punya jenjang
   "Perguruan Tinggi" yang tidak ada di `grade_levels` — ROADMAP 2.3/3.2.

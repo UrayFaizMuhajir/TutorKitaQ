@@ -15,6 +15,7 @@ use Tests\TestCase;
 class AssignmentTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CreatesVerifiedTutor;
 
     private string $userStorePath;
     private string $privateFileRoot;
@@ -176,5 +177,7 @@ class AssignmentTest extends TestCase
         unset($user);
         file_put_contents($this->userStorePath, json_encode($users, JSON_THROW_ON_ERROR));
         DB::table('user_roles')->updateOrInsert(['user_id' => $id], ['role' => $role, 'created_at' => now(), 'updated_at' => now()]);
+        // Sejak verifikasi tutor, membuat/menilai tugas butuh tutor terverifikasi (pengajuan approved).
+        if ($role === 'tutor') $this->markTutorVerified($id);
     }
 }

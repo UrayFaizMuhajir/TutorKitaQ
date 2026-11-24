@@ -15,6 +15,7 @@ use Tests\TestCase;
 class LearningMaterialTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CreatesVerifiedTutor;
 
     private string $userStorePath;
 
@@ -227,5 +228,7 @@ class LearningMaterialTest extends TestCase
         file_put_contents($this->userStorePath, json_encode($records, JSON_THROW_ON_ERROR));
         $user = collect($records)->first(fn (array $record): bool => ($record['contact'] ?? null) === $contact);
         DB::table('user_roles')->updateOrInsert(['user_id' => (string) $user['id']], ['role' => $role, 'created_at' => now(), 'updated_at' => now()]);
+        // Sejak verifikasi tutor, mengelola materi butuh tutor terverifikasi (pengajuan approved).
+        if ($role === 'tutor') $this->markTutorVerified((string) $user['id']);
     }
 }

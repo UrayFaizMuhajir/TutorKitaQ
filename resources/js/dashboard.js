@@ -26,7 +26,7 @@ if (dashboard) {
     const levelFilter = document.querySelector('#subject-level-filter');
     // Judul halaman diambil dari menu sidebar yang dirender server (App\Support\DashboardNavigation);
     // daftar di bawah hanya cadangan bila atribut judul tidak ada.
-    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi' };
+    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor' };
     document.querySelectorAll('[data-sidebar-nav] [data-page-link][data-page-title]').forEach((link) => { pageTitles[link.dataset.pageLink] = link.dataset.pageTitle; });
     // Halaman yang tidak ada di menu role tidak dirender, jadi tautan/hash ke sana dialihkan ke Beranda.
     const isAvailablePage = (page) => Boolean(pageTitles[page]) && Boolean(document.querySelector(`[data-spa-page="${page}"]`));
@@ -1526,4 +1526,41 @@ if (dashboard) {
     searchInput?.addEventListener('input', filterContent);
     subjectFilter?.addEventListener('change', filterContent);
     levelFilter?.addEventListener('change', filterContent);
+
+    // Verifikasi Tutor (Admin): filter status pengajuan di sisi klien.
+    const adminVerificationPage = document.querySelector('[data-admin-verifications]');
+    if (adminVerificationPage) safeInit('verifikasi tutor', () => {
+        const items = [...adminVerificationPage.querySelectorAll('[data-verification-item]')];
+        const filters = [...adminVerificationPage.querySelectorAll('[data-verification-filter]')];
+        const empty = adminVerificationPage.querySelector('[data-verification-empty]');
+        const applyFilter = (status) => {
+            let visible = 0;
+            items.forEach((item) => {
+                item.hidden = status !== 'all' && item.dataset.status !== status;
+                if (!item.hidden) visible += 1;
+            });
+            filters.forEach((button) => {
+                const active = button.dataset.verificationFilter === status;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-selected', String(active));
+            });
+            if (empty) empty.hidden = visible > 0;
+        };
+        filters.forEach((button) => button.addEventListener('click', () => applyFilter(button.dataset.verificationFilter)));
+        applyFilter(filters.find((button) => button.classList.contains('is-active'))?.dataset.verificationFilter || 'pending');
+    });
+
+    // Kartu mahasiswa: cek tipe & ukuran di browser (server tetap memvalidasi isi file).
+    const studentCardTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const studentCardMaxBytes = 2 * 1024 * 1024;
+    document.querySelectorAll('[data-student-card-input]').forEach((input) => input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        const error = input.closest('form')?.querySelector('[data-student-card-error]');
+        let message = '';
+        if (file && !studentCardTypes.includes(file.type)) message = 'Kartu mahasiswa harus berupa JPG, PNG, atau PDF.';
+        else if (file && file.size > studentCardMaxBytes) message = 'Ukuran kartu mahasiswa maksimal 2 MB.';
+        if (message) input.value = '';
+        if (error) { error.textContent = message; error.hidden = !message; }
+        if (message) showToast(message);
+    }));
 }

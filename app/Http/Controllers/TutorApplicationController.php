@@ -8,6 +8,7 @@ use App\Models\TutorApplicationReview;
 use App\Models\TutorProfile;
 use App\Models\UserNotification;
 use App\Support\LocalUserStore;
+use App\Support\TutorVerification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,21 +37,29 @@ class TutorApplicationController extends Controller
             'subject_ids.*' => ['integer', 'distinct', 'exists:subjects,id'],
             'availability_present' => ['sometimes', 'accepted'],
             'subject_ids_present' => ['sometimes', 'accepted'],
+            'occupation' => ['sometimes', 'nullable', 'string', 'max:60'],
+        ], [
+            'occupation.max' => 'Pekerjaan maksimal 60 karakter.',
+            'occupation.string' => 'Pekerjaan harus berupa teks.',
         ]);
         $userId = (string) $request->user()->getAuthIdentifier();
         $oldAvatar = $request->user()->avatar_path;
         $newAvatar = $request->file('avatar')?->store('profile-photos/'.$userId, 'local');
+        // Data tutor lewat Edit Profil hanya untuk tutor terverifikasi; tutor yang belum terverifikasi
+        // memakai halaman Profil & Verifikasi (datanya terkunci saat diperiksa admin).
+        $verifiedTutor = ($request->user()->role ?? 'student') === 'tutor' && TutorVerification::isVerified($userId);
 
         try {
-            DB::transaction(function () use ($data, $request, $userId, $newAvatar): void {
-                if (($request->user()->role ?? 'student') === 'tutor') {
+            DB::transaction(function () use ($data, $userId, $newAvatar, $verifiedTutor): void {
+                if ($verifiedTutor) {
                     $profile = TutorProfile::query()->firstOrNew(['user_id' => $userId]);
                     foreach (['education_level', 'institution', 'program', 'graduation_year', 'bio', 'experience', 'additional_info', 'availability'] as $field) {
                         if (array_key_exists($field, $data)) $profile->{$field} = $data[$field];
                     }
                     if (array_key_exists('availability', $data) || array_key_exists('availability_present', $data)) $profile->availability = $data['availability'] ?? [];
                     if ($newAvatar) $profile->avatar_path = $newAvatar;
-                    $profile->is_active = true;
+                    // is_active tidak lagi dipaksa true di sini: hanya persetujuan admin yang mengaktifkan
+                    // tutor (dan nonaktif/aktif oleh admin menyusul di ROADMAP 1.3).
                     $profile->save();
                     if (array_key_exists('subject_ids', $data) || array_key_exists('subject_ids_present', $data)) $profile->subjects()->sync($data['subject_ids'] ?? []);
                 }
@@ -58,6 +67,8 @@ class TutorApplicationController extends Controller
 
             $update = ['name' => trim($data['name'])];
             if ($newAvatar) $update['avatar_path'] = $newAvatar;
+            // Pekerjaan hanya ditulis bila field-nya dikirim; kosong = kunci dihapus dari akun.
+            if ($request->exists('occupation')) $update['occupation'] = $data['occupation'] ?? null;
             if (! $users->updateProfile($userId, $update)) throw new \RuntimeException('Akun tidak ditemukan.');
         } catch (\Throwable $exception) {
             if ($newAvatar) Storage::disk('local')->delete($newAvatar);
@@ -89,46 +100,37 @@ class TutorApplicationController extends Controller
             'experience' => ['nullable', 'string', 'max:4000'],
             'additional_info' => ['nullable', 'string', 'max:2000'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:2048'],
+            // Satu jalur verifikasi: siswa yang mengajukan diri juga wajib menyertakan kartu mahasiswa.
+            'student_card' => TutorVerification::cardRules(),
         ], [
             'avatar.image' => 'Unggah foto JPG, PNG, atau WebP yang valid.',
             'avatar.max' => 'Ukuran foto maksimal 2 MB.',
             'subject_ids.required' => 'Pilih minimal satu mata pelajaran yang kamu kuasai.',
             'bio.min' => 'Biografi minimal 20 karakter.',
-        ]);
+        ] + TutorVerification::cardMessages());
         $newAvatar = $request->file('avatar')?->store('profile-photos/'.$userId, 'local');
         $avatar = $newAvatar ?: $request->user()->avatar_path;
-        abort_if(! $avatar, 422, 'Tambahkan foto profil sebelum mengirim pengajuan.');
+        if (! $avatar) {
+            throw ValidationException::withMessages(['avatar' => 'Tambahkan foto profil sebelum mengirim pengajuan.']);
+        }
         $oldAvatar = $request->user()->avatar_path;
+        $cardPath = TutorVerification::storeCard($request->file('student_card'), $userId);
+        $previousCard = $existing?->student_card_path;
 
         try {
-            DB::transaction(function () use ($data, $userId, $avatar, $existing): void {
-                $application = TutorApplication::query()->lockForUpdate()->firstOrNew(['user_id' => $userId]);
-                if ($application->exists && $application->status === 'pending') {
-                    throw ValidationException::withMessages(['application' => 'Pengajuanmu masih menunggu pemeriksaan admin.']);
-                }
-                if ($application->exists && $application->status === 'approved') {
-                    throw ValidationException::withMessages(['application' => 'Akunmu sudah menjadi tutor.']);
-                }
-                $fromStatus = $application->status;
-                $application->fill([
-                    'applicant_name' => trim($data['applicant_name']), 'education_level' => $data['education_level'],
-                    'institution' => trim($data['institution']), 'program' => trim($data['program']),
-                    'graduation_year' => $data['graduation_year'], 'bio' => trim($data['bio']),
-                    'experience' => $data['experience'] ?? null, 'additional_info' => $data['additional_info'] ?? null,
-                    'avatar_path' => $avatar, 'status' => 'pending', 'rejection_reason' => null,
-                    'reviewed_by' => null, 'submitted_at' => now(), 'reviewed_at' => null, 'approved_at' => null,
-                ]);
-                $application->save();
-                $application->subjects()->sync($data['subject_ids']);
-                $application->reviews()->create([
-                    'actor_id' => $userId, 'action' => $fromStatus === 'rejected' ? 'resubmitted' : 'submitted',
-                    'from_status' => $fromStatus, 'to_status' => 'pending',
-                ]);
-            });
+            TutorVerification::saveApplication($userId, [
+                'applicant_name' => trim($data['applicant_name']), 'education_level' => $data['education_level'],
+                'institution' => trim($data['institution']), 'program' => trim($data['program']),
+                'graduation_year' => $data['graduation_year'], 'bio' => trim($data['bio']),
+                'experience' => $data['experience'] ?? null, 'additional_info' => $data['additional_info'] ?? null,
+                'avatar_path' => $avatar, 'student_card_path' => $cardPath,
+            ], $data['subject_ids']);
         } catch (\Throwable $exception) {
             if ($newAvatar) Storage::disk('local')->delete($newAvatar);
+            Storage::disk('local')->delete($cardPath);
             throw $exception;
         }
+        TutorVerification::deleteCardIfUnused($previousCard);
 
         if ($newAvatar) {
             if (! $users->updateProfile($userId, ['avatar_path' => $newAvatar])) {
@@ -157,7 +159,9 @@ class TutorApplicationController extends Controller
             $application = TutorApplication::query()->whereKey($tutorApplication->id)->lockForUpdate()->with('subjects')->firstOrFail();
             abort_unless($application->status === 'pending', 409, 'Pengajuan ini sudah diproses.');
             $role = DB::table('user_roles')->where('user_id', $candidateId)->lockForUpdate()->value('role');
-            abort_unless($role === 'student', 409, 'Hanya akun siswa yang dapat disetujui menjadi tutor.');
+            // Pemohon bisa siswa (mengajukan diri) atau tutor yang mendaftar sendiri (belum terverifikasi).
+            abort_unless(in_array($role, ['student', 'tutor'], true), 409, 'Hanya akun siswa atau tutor yang dapat diverifikasi sebagai tutor.');
+            $fromStudent = $role === 'student';
             $adminId = (string) $request->user()->getAuthIdentifier();
             $approved = $data['decision'] === 'approve';
             $application->update([
@@ -176,23 +180,30 @@ class TutorApplicationController extends Controller
                     'program' => $application->program, 'graduation_year' => $application->graduation_year,
                     'bio' => $application->bio, 'experience' => $application->experience,
                     'additional_info' => $application->additional_info, 'avatar_path' => $application->avatar_path,
+                    'student_card_path' => $application->student_card_path,
+                    // Satu-satunya tempat tutor menjadi aktif: setelah admin menyetujui verifikasi.
                     'is_active' => true,
                 ]);
                 $profile->subjects()->sync($application->subjects->modelKeys());
-                $updated = DB::table('user_roles')->where('user_id', $candidateId)->where('role', 'student')->update(['role' => 'tutor', 'updated_at' => now()]);
-                abort_unless($updated === 1, 409, 'Role akun berubah. Muat ulang daftar pengajuan.');
-                DB::table('user_role_changes')->insert([
-                    'user_id' => $candidateId, 'actor_id' => $adminId, 'old_role' => 'student', 'new_role' => 'tutor',
-                    'source' => 'tutor_application_approval', 'created_at' => now(), 'updated_at' => now(),
-                ]);
+                if ($fromStudent) {
+                    $updated = DB::table('user_roles')->where('user_id', $candidateId)->where('role', 'student')->update(['role' => 'tutor', 'updated_at' => now()]);
+                    abort_unless($updated === 1, 409, 'Role akun berubah. Muat ulang daftar pengajuan.');
+                    DB::table('user_role_changes')->insert([
+                        'user_id' => $candidateId, 'actor_id' => $adminId, 'old_role' => 'student', 'new_role' => 'tutor',
+                        'source' => 'tutor_application_approval', 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
             }
 
             UserNotification::query()->create([
                 'user_id' => $candidateId,
                 'notification_key' => 'tutor-application-'.$application->id.'-'.$application->status.'-'.$application->updated_at->timestamp,
-                'category' => 'system', 'title' => $approved ? 'Pengajuan tutor disetujui' : 'Pengajuan tutor belum disetujui',
-                'body' => $approved ? 'Selamat, akunmu sekarang memiliki akses TutorKita sebagai tutor.' : 'Pengajuanmu ditolak. Alasan: '.trim((string) $data['reason']),
-                'action_url' => '/dashboard#profile',
+                'category' => 'system',
+                'title' => $approved ? ($fromStudent ? 'Pengajuan tutor disetujui' : 'Akun tutor terverifikasi') : 'Pengajuan tutor belum disetujui',
+                'body' => $approved
+                    ? ($fromStudent ? 'Selamat, akunmu sekarang memiliki akses TutorKita sebagai tutor.' : 'Selamat, akun tutormu sudah terverifikasi. Kamu sekarang bisa mengelola materi.')
+                    : 'Pengajuanmu ditolak. Alasan: '.trim((string) $data['reason']),
+                'action_url' => $approved ? '/dashboard' : ($fromStudent ? '/dashboard#profile' : '/dashboard#verification'),
             ]);
         });
 

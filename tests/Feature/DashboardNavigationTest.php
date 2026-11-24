@@ -17,6 +17,7 @@ use Tests\TestCase;
 class DashboardNavigationTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CreatesVerifiedTutor;
 
     private string $userStorePath;
 
@@ -39,8 +40,13 @@ class DashboardNavigationTest extends TestCase
     {
         $this->assertSame(['dashboard', 'tutors', 'sessions', 'materials', 'assignments', 'notifications', 'history'], DashboardNavigation::forRole('student')['pages']);
         $this->assertSame(['dashboard', 'materials', 'notifications'], DashboardNavigation::forRole('tutor')['pages']);
-        $this->assertSame(['dashboard', 'notifications'], DashboardNavigation::forRole('admin')['pages']);
-        $this->assertSame(['admin-verification', 'admin-users'], array_values(array_filter(array_column(DashboardNavigation::forRole('admin')['items'], 'action'))));
+        // Sejak verifikasi tutor: Verifikasi Tutor jadi halaman; Pengguna tetap dialog.
+        $this->assertSame(['dashboard', 'tutor-verifications', 'notifications'], DashboardNavigation::forRole('admin')['pages']);
+        $this->assertSame(['admin-users'], array_values(array_filter(array_column(DashboardNavigation::forRole('admin')['items'], 'action'))));
+        // Tutor yang belum terverifikasi: Beranda, Profil & Verifikasi, Notifikasi.
+        $this->assertSame(['dashboard', 'verification', 'notifications'], DashboardNavigation::forRole('tutor', false)['pages']);
+        $this->assertSame('tutor-unverified', DashboardNavigation::forRole('tutor', false)['home']);
+        $this->assertSame(DashboardNavigation::forRole('student')['pages'], DashboardNavigation::forRole('student', false)['pages']);
 
         foreach ([null, '', 'superadmin', 'Admin'] as $unknown) {
             $navigation = DashboardNavigation::forRole($unknown);
@@ -148,22 +154,23 @@ class DashboardNavigationTest extends TestCase
         $profileMenu = $this->profileMenu($html);
 
         $this->assertStringContainsString('aria-label="Menu admin"', $sidebar);
-        $this->assertStringContainsString('data-open-admin-verification', $sidebar);
+        // Sejak verifikasi tutor, Verifikasi Tutor adalah halaman (bukan dialog); Pengguna tetap dialog.
+        $this->assertStringContainsString('data-page-link="tutor-verifications"', $sidebar);
         $this->assertStringContainsString('data-open-admin-users', $sidebar);
-        $this->assertMatchesRegularExpression('/data-open-admin-verification[^>]*>.*?Verifikasi Tutor.*?nav-count[^>]*>1</s', $sidebar);
+        $this->assertMatchesRegularExpression('/data-page-link="tutor-verifications"[^>]*>.*?Verifikasi Tutor.*?nav-count[^>]*>1</s', $sidebar);
         $this->assertStringNotContainsString('data-open-admin', $profileMenu);
         $this->assertStringContainsString('Edit Profil', $profileMenu);
         $this->assertStringContainsString('<span>Panel admin</span>', $html);
 
-        foreach (['dashboard', 'notifications'] as $page) {
+        foreach (['dashboard', 'tutor-verifications', 'notifications'] as $page) {
             $this->assertStringContainsString('data-spa-page="'.$page.'"', $html);
         }
-        foreach (['tutors', 'sessions', 'materials', 'assignments', 'history'] as $page) {
+        foreach (['tutors', 'sessions', 'materials', 'assignments', 'history', 'verification'] as $page) {
             $this->assertStringNotContainsString('data-page-link="'.$page.'"', $sidebar);
             $this->assertStringNotContainsString('data-spa-page="'.$page.'"', $html);
         }
-        // Dialog admin tetap dirender agar tombol sidebar bisa membukanya.
-        $this->assertStringContainsString('data-admin-verification-dialog', $html);
+        // Dialog Pengguna tetap dirender agar tombol sidebar bisa membukanya; dialog verifikasi lama sudah diganti halaman.
+        $this->assertStringNotContainsString('data-admin-verification-dialog', $html);
         $this->assertStringContainsString('data-admin-users-dialog', $html);
 
         $this->assertStat($html, 'Pengajuan Tutor', '1');
@@ -183,6 +190,8 @@ class DashboardNavigationTest extends TestCase
             Auth::logout();
             Auth::login(Auth::guard()->getProvider()->retrieveById($userId));
         }
+        // Tes 0.1 memakai tutor terverifikasi (menu Materi); tutor belum terverifikasi dites di TutorVerificationTest.
+        if ($role === 'tutor') $this->markTutorVerified($userId, $name);
 
         return $userId;
     }

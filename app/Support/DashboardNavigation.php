@@ -14,13 +14,27 @@ final class DashboardNavigation
     public const ROLES = ['student', 'tutor', 'admin'];
 
     /**
-     * @return array{role: string, label: string, aria_label: string, kicker: string, search_placeholder: string, items: list<array<string, mixed>>, pages: list<string>}
+     * @param  bool  $verifiedTutor  hanya berpengaruh untuk role tutor: tutor yang belum terverifikasi
+     *                               hanya mendapat Beranda, Profil & Verifikasi, dan Notifikasi.
+     * @return array{role: string, home: string, label: string, aria_label: string, kicker: string, search_placeholder: string, items: list<array<string, mixed>>, pages: list<string>}
      */
-    public static function forRole(?string $role): array
+    public static function forRole(?string $role, bool $verifiedTutor = true): array
     {
         $role = in_array($role, self::ROLES, true) ? $role : 'student';
+        $home = $role === 'tutor' && ! $verifiedTutor ? 'tutor-unverified' : $role;
 
-        $definition = match ($role) {
+        $definition = match ($home) {
+            'tutor-unverified' => [
+                'label' => 'MENU TUTOR',
+                'aria_label' => 'Menu tutor',
+                'kicker' => 'Verifikasi tutor',
+                'search_placeholder' => 'Cari notifikasi...',
+                'items' => [
+                    self::page('dashboard', 'home', 'Beranda'),
+                    self::page('verification', 'user', 'Profil & Verifikasi'),
+                    self::page('notifications', 'bell', 'Notifikasi'),
+                ],
+            ],
             'tutor' => [
                 'label' => 'MENU MENGAJAR',
                 'aria_label' => 'Menu mengajar',
@@ -39,7 +53,7 @@ final class DashboardNavigation
                 'search_placeholder' => 'Cari notifikasi...',
                 'items' => [
                     self::page('dashboard', 'home', 'Beranda'),
-                    self::action('admin-verification', 'check', 'Verifikasi Tutor'),
+                    self::page('tutor-verifications', 'check', 'Verifikasi Tutor'),
                     self::action('admin-users', 'users', 'Pengguna'),
                     self::page('notifications', 'bell', 'Notifikasi'),
                 ],
@@ -62,6 +76,7 @@ final class DashboardNavigation
         };
 
         $definition['role'] = $role;
+        $definition['home'] = $home;
         $definition['pages'] = array_values(array_map(
             static fn (array $item): string => $item['page'],
             array_filter($definition['items'], static fn (array $item): bool => isset($item['page'])),

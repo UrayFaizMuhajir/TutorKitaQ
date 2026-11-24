@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\DashboardMockData;
 use App\Support\DashboardNavigation;
+use App\Support\TutorVerification;
 use App\Models\AssignmentSubmission;
 use App\Models\LearningMaterial;
 use App\Models\LearningSession;
@@ -43,36 +44,65 @@ class DashboardController extends Controller
             'role' => $authenticatedUser->role ?? 'student',
             'role_label' => ['student' => 'Student', 'tutor' => 'Tutor', 'admin' => 'Admin'][$authenticatedUser->role ?? 'student'] ?? 'Student',
             'avatar_url' => $authenticatedUser->avatar_path ? route('dashboard.profile.photo', $authenticatedUser->getAuthIdentifier()) : null,
+            'occupation' => $authenticatedUser->occupation ?: null,
         ];
+        // Teks di bawah nama (topbar, sidebar, menu profil): pekerjaan bila diisi, kalau tidak peran.
+        $dashboardData['user']['subtitle'] = $dashboardData['user']['occupation'] ?? $dashboardData['user']['role_label'];
 
-        $navigation = DashboardNavigation::forRole($dashboardData['user']['role']);
+        $userId = (string) $authenticatedUser->getAuthIdentifier();
+        $isTutor = $dashboardData['user']['role'] === 'tutor';
+        $verifiedTutor = $isTutor && TutorVerification::isVerified($userId);
+        $navigation = DashboardNavigation::forRole($dashboardData['user']['role'], $verifiedTutor);
+        $dashboardData['tutor_verified'] = $verifiedTutor;
+        $dashboardData['tutor_verification'] = $isTutor && ! $verifiedTutor
+            ? TutorVerification::stateFor($userId, $authenticatedUser->avatar_path)
+            : null;
 
         $dashboardData['tutor_profile'] = TutorProfile::query()->with('subjects')->where('user_id', (string) $authenticatedUser->getAuthIdentifier())->first();
         $profileAvatar = $authenticatedUser->avatar_path ?? $dashboardData['tutor_profile']?->avatar_path;
         $dashboardData['user']['avatar_url'] = $profileAvatar ? route('dashboard.profile.photo', $authenticatedUser->getAuthIdentifier()) : null;
         $dashboardData['tutor_application'] = TutorApplication::query()->with('subjects')->where('user_id', (string) $authenticatedUser->getAuthIdentifier())->first();
         $dashboardData['pending_tutor_applications'] = collect();
+        $dashboardData['admin_tutor_applications'] = collect();
+        $dashboardData['admin_tutor_application_counts'] = ['all' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
         $dashboardData['admin_user_rows'] = collect();
         $dashboardData['pending_tutor_application_count'] = 0;
         if (($authenticatedUser->role ?? 'student') === 'admin') {
-            $pendingApplications = TutorApplication::query()->with('subjects')->where('status', 'pending')->orderBy('submitted_at')->get();
-            $dashboardData['pending_tutor_application_count'] = $pendingApplications->count();
-            $dashboardData['pending_tutor_applications'] = $pendingApplications->map(function (TutorApplication $application) use ($users): TutorApplication {
-                $record = $users->findById($application->user_id) ?? [];
-                $application->candidate_contact = $record['email'] ?? $record['phone'] ?? $record['contact'] ?? '';
-                $application->candidate_name = $record['name'] ?? $application->applicant_name;
-                $application->candidate_photo_url = route('dashboard.profile.photo', $application->user_id);
+            $accounts = collect($users->all())->keyBy(fn (array $record): string => (string) ($record['id'] ?? ''));
+            // Asal pengajuan: tutor yang mendaftar sendiri tercatat dengan source "registration".
+            $registeredAsTutor = DB::table('user_role_changes')->where('source', 'registration')->where('new_role', 'tutor')->pluck('user_id')->map(fn ($id): string => (string) $id)->flip();
+            $applications = TutorApplication::query()
+                ->with(['subjects', 'reviews' => fn ($query) => $query->orderBy('created_at')->orderBy('id')])
+                ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END")
+                ->orderBy('submitted_at')
+                ->get()
+                ->map(function (TutorApplication $application) use ($accounts, $registeredAsTutor): TutorApplication {
+                    $record = $accounts[(string) $application->user_id] ?? [];
+                    $application->candidate_contact = $record['email'] ?? $record['phone'] ?? $record['contact'] ?? '';
+                    $application->candidate_name = $record['name'] ?? $application->applicant_name;
+                    $application->candidate_occupation = $record['occupation'] ?? null;
+                    $application->candidate_photo_url = route('dashboard.profile.photo', $application->user_id);
+                    $application->origin_label = isset($registeredAsTutor[(string) $application->user_id]) ? 'Daftar sebagai tutor' : 'Siswa mengajukan diri';
+                    $application->card_url = $application->student_card_path ? route('dashboard.tutor-applications.student-card', $application) : null;
+                    $application->card_is_pdf = TutorVerification::isPdf($application->student_card_path);
 
-                return $application;
-            });
+                    return $application;
+                });
+            $pendingApplications = $applications->where('status', 'pending')->values();
+            $dashboardData['admin_tutor_applications'] = $applications;
+            $dashboardData['admin_tutor_application_counts'] = ['all' => $applications->count()] + collect(['pending', 'approved', 'rejected'])
+                ->mapWithKeys(fn (string $status): array => [$status => $applications->where('status', $status)->count()])->all();
+            $dashboardData['pending_tutor_application_count'] = $pendingApplications->count();
+            $dashboardData['pending_tutor_applications'] = $pendingApplications;
             // Role semua akun diambil dengan satu query (sebelumnya satu query per akun).
             $rolesByUser = DB::table('user_roles')->pluck('role', 'user_id');
-            $dashboardData['admin_user_rows'] = collect($users->all())->map(function (array $record) use ($rolesByUser): array {
+            $dashboardData['admin_user_rows'] = $accounts->values()->map(function (array $record) use ($rolesByUser): array {
                 $role = $rolesByUser[(string) ($record['id'] ?? '')] ?? ($record['role'] ?? 'student');
 
                 return [
                     'id' => (string) ($record['id'] ?? ''), 'name' => (string) ($record['name'] ?? 'Pengguna'),
                     'contact' => (string) ($record['email'] ?? $record['phone'] ?? $record['contact'] ?? ''),
+                    'occupation' => $record['occupation'] ?? null,
                     'role' => $role,
                 ];
             });
@@ -204,7 +234,7 @@ class DashboardController extends Controller
         $dashboardData += AssignmentDashboardData::make($authenticatedUser);
         $dashboardData = array_replace($dashboardData, NotificationCenterData::make($authenticatedUser));
 
-        $dashboardData['tutor_home'] = $navigation['role'] === 'tutor'
+        $dashboardData['tutor_home'] = $navigation['home'] === 'tutor'
             ? $this->tutorHome((string) $authenticatedUser->getAuthIdentifier())
             : null;
         $dashboardData['admin_home'] = $navigation['role'] === 'admin'
@@ -212,7 +242,7 @@ class DashboardController extends Controller
             : null;
 
         $navigation['items'] = array_map(fn (array $item): array => $item + [
-            'count' => ($item['action'] ?? null) === 'admin-verification' ? $dashboardData['pending_tutor_application_count'] : null,
+            'count' => ($item['page'] ?? null) === 'tutor-verifications' ? $dashboardData['pending_tutor_application_count'] : null,
         ], $navigation['items']);
         $dashboardData['navigation'] = $navigation;
 

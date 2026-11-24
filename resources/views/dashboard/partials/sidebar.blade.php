@@ -10,7 +10,7 @@
         @foreach ($navigation['items'] as $item)
             @if (isset($item['page']))
                 @if ($dashboardSpa)
-                    <button class="nav-link {{ $item['page'] === 'dashboard' ? 'is-current' : '' }}" type="button" data-page-link="{{ $item['page'] }}" data-page-title="{{ $item['label'] }}" @if ($item['page'] === 'dashboard') aria-current="page" @endif><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if ($item['page'] === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</button>
+                    <button class="nav-link {{ $item['page'] === 'dashboard' ? 'is-current' : '' }}" type="button" data-page-link="{{ $item['page'] }}" data-page-title="{{ $item['label'] }}" @if ($item['page'] === 'dashboard') aria-current="page" @endif><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if ($item['page'] === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif @if (! empty($item['count']))<span class="profile-menu-count nav-count" aria-label="{{ $item['count'] }} menunggu">{{ $item['count'] }}</span>@endif</button>
                 @else
                     <a class="nav-link" href="{{ route('dashboard') }}#{{ $item['page'] }}"><x-icon :name="$item['icon']" /><span>{{ $item['label'] }}</span>@if ($item['page'] === 'notifications' && $notification_unread_count)<i class="sidebar-unread-dot"></i>@endif</a>
                 @endif
@@ -29,7 +29,7 @@
         </section>
         <button class="sidebar-user-profile" type="button" aria-label="Menu profil {{ $user['full_name'] }}" aria-expanded="false" aria-controls="profile-menu" data-profile-toggle>
             <span class="sidebar-user-avatar" aria-hidden="true">{{ $user['initials'] }}</span>
-            <span><strong>{{ $user['full_name'] }}</strong><small>{{ $user['role_label'] }}</small></span>
+            <span><strong>{{ $user['full_name'] }}</strong><small data-user-subtitle>{{ $user['subtitle'] ?? $user['role_label'] }}</small></span>
             <x-icon name="chevron-down" class="icon-sm" />
         </button>
     </div>

@@ -4,7 +4,7 @@
         <span class="eyebrow"><span class="eyebrow-dot"></span> {{ $today_label }}</span>
         <h1>Selamat datang, <span>{{ $user['name'] }}</span>!</h1>
         <p>Periksa pengajuan tutor dan pantau akun TutorKita dari satu tempat.</p>
-        <button class="button button-white" type="button" data-open-admin-verification>Periksa pengajuan <x-icon name="arrow-right" class="icon-sm" /></button>
+        <button class="button button-white" type="button" data-page-link="tutor-verifications">Periksa pengajuan <x-icon name="arrow-right" class="icon-sm" /></button>
     </div>
     <div class="welcome-art" aria-hidden="true" style="--welcome-image: url('{{ asset('assets/images/tutorkita-hero-reference.jpg') }}')">
         <span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span>
@@ -23,7 +23,7 @@
 <section class="panel role-home-panel" aria-labelledby="admin-applications-heading">
     <div class="panel-heading">
         <div><span class="section-kicker">VERIFIKASI TUTOR</span><h2 id="admin-applications-heading">Pengajuan menunggu</h2><p>Pengajuan tutor terlama ditampilkan lebih dulu.</p></div>
-        <button class="text-link" type="button" data-open-admin-verification>Periksa semua <x-icon name="arrow-right" class="icon-sm" /></button>
+        <button class="text-link" type="button" data-page-link="tutor-verifications">Periksa semua <x-icon name="arrow-right" class="icon-sm" /></button>
     </div>
     <ul class="role-home-list">
         @forelse ($admin_home['recent_applications'] as $application)

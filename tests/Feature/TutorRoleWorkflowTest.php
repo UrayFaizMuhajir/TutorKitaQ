@@ -186,6 +186,8 @@ class TutorRoleWorkflowTest extends TestCase
             'bio' => 'Saya senang membantu siswa memahami pelajaran dengan contoh yang mudah.',
             'experience' => 'Pernah menjadi relawan belajar selama satu tahun.',
             'avatar' => $this->fakeImage('calon-tutor.png'),
+            // Sejak verifikasi tutor (satu jalur), pengajuan siswa wajib menyertakan kartu mahasiswa.
+            'student_card' => UploadedFile::fake()->createWithContent('ktm.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF"),
         ];
     }
 

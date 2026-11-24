@@ -26,6 +26,16 @@
             <label class="sr-only" for="register-password-confirmation">Konfirmasi Kata Sandi</label>
             <input id="register-password-confirmation" name="password_confirmation" type="password" placeholder="Konfirmasi Kata Sandi" autocomplete="new-password" required data-auth-field>
         </div>
+        @php
+            $accountType = old('account_type') === 'tutor' ? 'tutor' : 'student';
+        @endphp
+        {{-- Hanya Siswa atau Tutor; Admin tidak pernah tersedia lewat pendaftaran publik. --}}
+        <fieldset class="auth-role-choice" data-account-type>
+            <legend>Daftar sebagai</legend>
+            <label class="auth-role-option"><input type="radio" name="account_type" value="student" @checked($accountType === 'student')><span><strong>Saya ingin belajar</strong><small>Siswa</small></span></label>
+            <label class="auth-role-option"><input type="radio" name="account_type" value="tutor" @checked($accountType === 'tutor')><span><strong>Saya ingin mengajar</strong><small>Tutor</small></span></label>
+            <p class="auth-role-hint" data-tutor-hint @if ($accountType !== 'tutor') hidden @endif>Akun tutor perlu diverifikasi admin dengan kartu mahasiswa sebelum bisa mengunggah materi.</p>
+        </fieldset>
         <label class="auth-terms"><input type="checkbox" name="terms" required data-auth-field><span>Saya setuju dengan Syarat dan Ketentuan serta Kebijakan Privasi TutorKita</span></label>
         <button class="auth-submit" type="submit">Daftar Sekarang</button>
     </form>

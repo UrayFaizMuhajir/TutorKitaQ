@@ -150,14 +150,13 @@ class SubjectSelectionTest extends TestCase
 
     public function test_catalog_and_selection_actions_are_for_students_only(): void
     {
+        // Sejak pendaftaran bisa memilih role, akun tutor dibuat lewat jalur resmi (account_type=tutor).
+        // Dulu tes ini mengubah role di users.json; kini role tersimpan di user_roles sejak pendaftaran.
         $this->post('/register', [
             'name' => 'Tutor', 'contact' => 'tutor@example.test', 'password' => 'TutorPass123!',
-            'password_confirmation' => 'TutorPass123!', 'terms' => 'on',
+            'password_confirmation' => 'TutorPass123!', 'terms' => 'on', 'account_type' => 'tutor',
         ])->assertRedirect('/login');
 
-        $records = json_decode(file_get_contents($this->userStorePath), true, flags: JSON_THROW_ON_ERROR);
-        $records[0]['role'] = 'tutor';
-        file_put_contents($this->userStorePath, json_encode($records, JSON_THROW_ON_ERROR));
         $this->post('/login', ['contact' => 'tutor@example.test', 'password' => 'TutorPass123!'])
             ->assertRedirect('/dashboard');
 

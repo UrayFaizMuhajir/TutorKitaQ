@@ -10,7 +10,7 @@ class TutorApplication extends Model
 {
     protected $fillable = [
         'user_id', 'applicant_name', 'education_level', 'institution', 'program', 'graduation_year',
-        'bio', 'experience', 'additional_info', 'avatar_path', 'status', 'rejection_reason',
+        'bio', 'experience', 'additional_info', 'avatar_path', 'student_card_path', 'status', 'rejection_reason',
         'reviewed_by', 'submitted_at', 'reviewed_at', 'approved_at',
     ];
 

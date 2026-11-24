@@ -72,15 +72,24 @@ class LocalUserStore
         return $this->withLockedRecords(LOCK_SH, fn ($handle, array $records): array => array_values($records));
     }
 
-    /** Update only the explicitly supported public profile fields. */
+    /**
+     * Update only the explicitly supported public profile fields.
+     * `occupation` kosong menghapus kunci itu, sehingga akun yang tidak pernah mengisi pekerjaan tidak berubah.
+     */
     public function updateProfile(string|int $id, array $attributes): ?array
     {
-        $allowed = array_intersect_key($attributes, array_flip(['name', 'avatar_path']));
+        $allowed = array_intersect_key($attributes, array_flip(['name', 'avatar_path', 'occupation']));
 
         return $this->withLockedRecords(LOCK_EX, function ($handle, array $records) use ($id, $allowed): ?array {
             foreach ($records as &$record) {
                 if ((string) ($record['id'] ?? '') !== (string) $id) continue;
-                foreach ($allowed as $key => $value) $record[$key] = $value;
+                foreach ($allowed as $key => $value) {
+                    if ($key === 'occupation' && ($value === null || trim((string) $value) === '')) {
+                        unset($record['occupation']);
+                        continue;
+                    }
+                    $record[$key] = $key === 'occupation' ? trim((string) $value) : $value;
+                }
                 $this->writeRecords($handle, $records);
                 $updated = $record;
                 unset($record);
@@ -94,12 +103,14 @@ class LocalUserStore
     }
 
     /** @return array<string, mixed>|null Returns null if the contact is already registered. */
-    public function create(string $name, string $contact, string $password): ?array
+    public function create(string $name, string $contact, string $password, string $role = 'student'): ?array
     {
         $contact = trim($contact);
         $normalized = self::normalizeContact($contact);
+        // Pendaftaran publik hanya boleh membuat Siswa atau Tutor; Admin hanya lewat perintah Artisan.
+        $role = in_array($role, ['student', 'tutor'], true) ? $role : 'student';
 
-        return $this->withLockedRecords(LOCK_EX, function ($handle, array $records) use ($name, $contact, $normalized, $password): ?array {
+        return $this->withLockedRecords(LOCK_EX, function ($handle, array $records) use ($name, $contact, $normalized, $password, $role): ?array {
             foreach ($records as $record) {
                 if (self::normalizeContact((string) ($record['contact'] ?? $record['email'] ?? $record['phone'] ?? '')) === $normalized) {
                     return null;
@@ -114,7 +125,7 @@ class LocalUserStore
                 'phone' => $isEmail ? null : $contact,
                 'contact' => $normalized,
                 'password' => Hash::make($password),
-                'role' => 'student',
+                'role' => $role,
                 'created_at' => now()->toIso8601String(),
             ];
 
