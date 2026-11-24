@@ -50,6 +50,7 @@ final class DashboardNavigation
                 'search_placeholder' => 'Cari materi atau notifikasi...',
                 'items' => [
                     self::page('dashboard', 'home', 'Beranda'),
+                    self::page('schedule', 'calendar', 'Jadwal Saya'),
                     self::page('materials', 'book', 'Materi Pembelajaran'),
                     self::page('notifications', 'bell', 'Notifikasi'),
                 ],

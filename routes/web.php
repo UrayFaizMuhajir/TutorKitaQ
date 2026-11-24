@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentVerificationController;
 use App\Http\Controllers\SubjectsController;
 use App\Http\Controllers\TutorApplicationController;
+use App\Http\Controllers\TutorSlotController;
 use App\Http\Controllers\TutorVerificationController;
 
 Route::get('/', LandingController::class)->name('home');
@@ -61,6 +62,16 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/dashboard/admin/tutor-applications/{tutorApplication}/decision', [TutorApplicationController::class, 'decide'])->middleware('role:admin')->name('dashboard.admin.tutor-applications.decide');
     Route::post('/dashboard/admin/student-profiles/{studentProfile}/decision', [AdminStudentController::class, 'decide'])->middleware('role:admin')->name('dashboard.admin.student-profiles.decide');
     Route::post('/dashboard/admin/tutors/{userId}/status', [AdminTutorController::class, 'updateStatus'])->middleware('role:admin')->whereNumber('userId')->name('dashboard.admin.tutors.status');
+
+    // Jadwal Saya — slot ketersediaan tutor (ROADMAP 2.2). Kelola: tutor terverifikasi + aktif.
+    Route::middleware('tutor.verified')->prefix('/dashboard/tutor/slots')->name('dashboard.tutor.slots.')->group(function (): void {
+        Route::post('/preview', [TutorSlotController::class, 'preview'])->name('preview');
+        Route::post('/', [TutorSlotController::class, 'store'])->name('store');
+        Route::put('/{slot}', [TutorSlotController::class, 'update'])->whereNumber('slot')->name('update');
+        Route::delete('/{slot}', [TutorSlotController::class, 'destroy'])->whereNumber('slot')->name('destroy');
+    });
+    // Membatalkan slot (berpemesan) tetap boleh untuk tutor terverifikasi yang dinonaktifkan, agar siswa diberi kabar.
+    Route::post('/dashboard/tutor/slots/{slot}/cancel', [TutorSlotController::class, 'cancel'])->middleware('role:tutor')->whereNumber('slot')->name('dashboard.tutor.slots.cancel');
 
     // Verifikasi tutor yang mendaftar sendiri (halaman "Profil & Verifikasi").
     Route::middleware('role:tutor')->prefix('/dashboard/tutor-verification')->name('dashboard.tutor-verification.')->group(function (): void {

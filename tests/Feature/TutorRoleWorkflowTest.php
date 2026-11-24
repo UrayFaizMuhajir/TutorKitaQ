@@ -163,8 +163,8 @@ class TutorRoleWorkflowTest extends TestCase
         $this->assertDatabaseHas('tutor_profile_subject', ['tutor_profile_id' => DB::table('tutor_profiles')->where('user_id', '1')->value('id'), 'subject_id' => $ipa->id]);
         $this->assertSame('tutor', DB::table('user_roles')->where('user_id', '1')->value('role'));
         $this->assertNotNull(app(LocalUserStore::class)->findById('1')['avatar_path']);
-        $availability = json_decode(DB::table('tutor_profiles')->where('user_id', '1')->value('availability'), true, flags: JSON_THROW_ON_ERROR);
-        $this->assertSame(['Senin · 15.00–18.00'], $availability);
+        // Checkbox availability USANG sejak slot jadwal (ROADMAP 2.2): Edit Profil tidak lagi menulisnya.
+        $this->assertNull(DB::table('tutor_profiles')->where('user_id', '1')->value('availability'));
     }
 
     private function registerAndLogin(string $name, string $email): void

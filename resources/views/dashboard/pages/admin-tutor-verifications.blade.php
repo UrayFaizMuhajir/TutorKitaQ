@@ -94,6 +94,10 @@
                             @csrf
                             <input type="hidden" name="action" value="{{ $tutor->is_active ? 'deactivate' : 'activate' }}">
                             <label class="sr-only" for="tutor-status-reason-{{ $tutor->user_id }}">Alasan</label>
+                            @if ($tutor->is_active && $tutor->impact_sessions > 0)
+                                <p class="verification-alert is-rejected tutor-impact-warning" data-tutor-impact>Tutor ini masih punya {{ $tutor->impact_sessions }} sesi mendatang dengan {{ $tutor->impact_students }} siswa. Mereka akan mendapat notifikasi; sesinya tidak otomatis dibatalkan.</p>
+                                <label class="tutor-impact-confirm"><input type="checkbox" name="confirm_impact" value="1" required> Saya paham</label>
+                            @endif
                             <input id="tutor-status-reason-{{ $tutor->user_id }}" name="reason" placeholder="{{ $tutor->is_active ? 'Alasan menonaktifkan (wajib)' : 'Alasan mengaktifkan kembali (wajib)' }}" minlength="5" maxlength="2000" required>
                             <button class="button {{ $tutor->is_active ? 'button-outline' : 'button-primary' }}" type="submit">{{ $tutor->is_active ? 'Nonaktifkan' : 'Aktifkan kembali' }}</button>
                         </form>

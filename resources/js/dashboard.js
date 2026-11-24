@@ -26,7 +26,7 @@ if (dashboard) {
     const levelFilter = document.querySelector('#subject-level-filter');
     // Judul halaman diambil dari menu sidebar yang dirender server (App\Support\DashboardNavigation);
     // daftar di bawah hanya cadangan bila atribut judul tidak ada.
-    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor', 'student-verification': 'Profil & Verifikasi', 'student-verifications': 'Verifikasi Siswa' };
+    const pageTitles = { dashboard: 'Beranda', tutors: 'Katalog Tutor', sessions: 'Sesi Belajar', materials: 'Materi Pembelajaran', assignments: 'Tugas & Penilaian', notifications: 'Notifikasi', history: 'Riwayat Sesi', verification: 'Profil & Verifikasi', 'tutor-verifications': 'Verifikasi Tutor', 'student-verification': 'Profil & Verifikasi', 'student-verifications': 'Verifikasi Siswa', schedule: 'Jadwal Saya' };
     document.querySelectorAll('[data-sidebar-nav] [data-page-link][data-page-title]').forEach((link) => { pageTitles[link.dataset.pageLink] = link.dataset.pageTitle; });
     // Halaman yang tidak ada di menu role tidak dirender, jadi tautan/hash ke sana dialihkan ke Beranda.
     const isAvailablePage = (page) => Boolean(pageTitles[page]) && Boolean(document.querySelector(`[data-spa-page="${page}"]`));
@@ -1566,6 +1566,41 @@ if (dashboard) {
             });
             page.querySelectorAll('[data-admin-tab-panel]').forEach((panel) => { panel.hidden = panel.dataset.adminTabPanel !== button.dataset.adminTab; });
         }));
+    }));
+
+    // Jadwal Saya (tutor): pratinjau slot mingguan dihitung di SERVER (sama persis dengan saat menyimpan).
+    document.querySelectorAll('[data-slot-form]').forEach((form) => safeInit('form slot', () => {
+        const repeat = form.querySelector('[data-slot-repeat]');
+        const until = form.querySelector('[data-slot-repeat-until]');
+        const preview = form.querySelector('[data-slot-preview]');
+        repeat?.addEventListener('change', () => { if (until) until.hidden = !repeat.checked; });
+        form.querySelector('[data-slot-preview-button]')?.addEventListener('click', async () => {
+            if (!preview) return;
+            preview.hidden = false;
+            preview.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'Menghitung pratinjau…' }));
+            try {
+                const response = await fetch(form.dataset.previewUrl, {
+                    method: 'POST',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.errors ? Object.values(result.errors).flat().join(' ') : result.message || 'Pratinjau gagal dimuat.');
+                const list = document.createElement('ul');
+                list.className = 'slot-preview-list';
+                result.occurrences.forEach((item) => {
+                    const row = document.createElement('li');
+                    row.className = item.ok ? 'is-ok' : 'is-conflict';
+                    row.textContent = item.ok ? `✓ ${item.label}` : `✕ ${item.label} — ${item.reason}`;
+                    list.append(row);
+                });
+                const summary = document.createElement('p');
+                summary.textContent = `${result.create_count} slot akan dibuat${result.occurrences.length > result.create_count ? `, ${result.occurrences.length - result.create_count} dilewati (merah).` : '.'}`;
+                preview.replaceChildren(summary, list);
+            } catch (error) {
+                preview.replaceChildren(Object.assign(document.createElement('p'), { className: 'verification-inline-error', textContent: error.message }));
+            }
+        });
     }));
 
     // Kartu mahasiswa: cek tipe & ukuran di browser (server tetap memvalidasi isi file).

@@ -227,7 +227,7 @@
             <label>Pengalaman mengajar<textarea name="experience" rows="3" maxlength="4000">{{ $tutor_profile->experience }}</textarea></label>
             <label>Informasi pendukung<textarea name="additional_info" rows="2" maxlength="2000">{{ $tutor_profile->additional_info }}</textarea></label>
             <input type="hidden" name="subject_ids_present" value="1"><fieldset><legend>Mata pelajaran yang diajarkan</legend><div class="role-subject-grid">@foreach ($subject_catalog as $subject)<label><input type="checkbox" name="subject_ids[]" value="{{ $subject->id }}" @checked($tutor_profile->subjects->contains('id', $subject->id))>{{ $subject->name }}</label>@endforeach</div></fieldset>
-            <input type="hidden" name="availability_present" value="1"><fieldset><legend>Ketersediaan tutor</legend><div class="role-availability-grid">@foreach (['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'] as $day)<label><input type="checkbox" name="availability[]" value="{{ $day }} · 15.00–18.00" @checked(in_array($day.' · 15.00–18.00', $tutor_profile->availability ?? [], true))>{{ $day }} sore</label>@endforeach</div><small>Pilihan awal tersedia pukul 15.00–18.00; jadwal rinci dapat disesuaikan pada pembaruan berikutnya.</small></fieldset>
+            {{-- Checkbox ketersediaan lama USANG: jadwal tutor kini lewat halaman Jadwal Saya (slot). --}}
         @endif
         <div class="role-dialog-actions"><button type="button" class="button button-outline" data-role-dialog-close>Batal</button><button type="submit" class="button button-primary">Simpan Profil</button></div>
     </form>
@@ -270,6 +270,9 @@
 
 @if (in_array('verification', $visiblePages, true) && ! empty($tutor_verification))
     @include('dashboard.pages.tutor-verification')
+@endif
+@if (in_array('schedule', $visiblePages, true))
+    @include('dashboard.pages.tutor-schedule')
 @endif
 @if (in_array('student-verification', $visiblePages, true) && ! empty($student_verification))
     @include('dashboard.pages.student-verification')

@@ -1963,3 +1963,30 @@ dialog:modal::backdrop { position:fixed; inset:0; }
 
 /* Verifikasi siswa (Admin) */
 .verification-avatar { display: grid; width: 54px; height: 54px; flex: none; place-items: center; border-radius: 13px; background: #edf5ff; color: var(--tk-blue); font-size: 20px; font-weight: 800; }
+
+/* Jadwal Saya (slot tutor) */
+.slot-form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.slot-repeat { display: flex !important; align-items: center; gap: 8px; }
+.slot-repeat input { width: auto !important; min-height: 0 !important; }
+.slot-preview { padding: 12px 14px; border: 1px solid var(--tk-border); border-radius: 12px; background: #fbfdff; font-size: 13px; }
+.slot-preview p { margin: 0 0 8px; }
+.slot-preview-list { display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; }
+.slot-preview-list .is-ok { color: #146b42; }
+.slot-preview-list .is-conflict { color: #b42318; font-weight: 600; }
+.slot-card { display: grid; gap: 10px; margin: 10px 0; }
+.slot-card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.slot-card-head h3 { margin: 0; color: var(--tk-navy); font-size: 15px; }
+.slot-capacity { margin: 4px 0 0; color: var(--tk-muted); font-size: 12px; }
+.slot-bookings { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.slot-bookings li { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 10px; border-radius: 10px; background: #f5f8fd; font-size: 12px; }
+.slot-bookings span { color: var(--tk-muted); }
+.slot-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.slot-actions .button { width: auto; padding-inline: 14px; }
+.slot-edit { flex: 1 1 100%; }
+.slot-edit summary { cursor: pointer; color: var(--tk-blue); font-weight: 600; font-size: 13px; }
+.slot-cancel-form { display: flex; flex: 1 1 320px; gap: 8px; }
+.slot-cancel-form input { flex: 1; min-height: 38px; padding: 8px 10px; border: 1px solid #dce4ef; border-radius: 10px; font: inherit; font-size: 12px; }
+.tutor-impact-confirm { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.tutor-impact-warning { flex-basis: 100%; }
+.verification-page .tutor-review-actions form[data-tutor-status-form] { flex-wrap: wrap; }
+@media (max-width: 760px) { .slot-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

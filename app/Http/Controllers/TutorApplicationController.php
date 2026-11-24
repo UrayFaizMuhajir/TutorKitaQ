@@ -31,11 +31,9 @@ class TutorApplicationController extends Controller
             'bio' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'experience' => ['sometimes', 'nullable', 'string', 'max:4000'],
             'additional_info' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'availability' => ['sometimes', 'nullable', 'array', 'max:21'],
-            'availability.*' => ['string', 'max:120'],
+            // `availability` (checkbox lama) USANG sejak slot jadwal (ROADMAP 2.2): tidak divalidasi/ditulis lagi; data lama tetap.
             'subject_ids' => ['sometimes', 'array', 'max:30'],
             'subject_ids.*' => ['integer', 'distinct', 'exists:subjects,id'],
-            'availability_present' => ['sometimes', 'accepted'],
             'subject_ids_present' => ['sometimes', 'accepted'],
             'occupation' => ['sometimes', 'nullable', 'string', 'max:60'],
         ], [
@@ -53,10 +51,9 @@ class TutorApplicationController extends Controller
             DB::transaction(function () use ($data, $userId, $newAvatar, $verifiedTutor): void {
                 if ($verifiedTutor) {
                     $profile = TutorProfile::query()->firstOrNew(['user_id' => $userId]);
-                    foreach (['education_level', 'institution', 'program', 'graduation_year', 'bio', 'experience', 'additional_info', 'availability'] as $field) {
+                    foreach (['education_level', 'institution', 'program', 'graduation_year', 'bio', 'experience', 'additional_info'] as $field) {
                         if (array_key_exists($field, $data)) $profile->{$field} = $data[$field];
                     }
-                    if (array_key_exists('availability', $data) || array_key_exists('availability_present', $data)) $profile->availability = $data['availability'] ?? [];
                     if ($newAvatar) $profile->avatar_path = $newAvatar;
                     // is_active tidak lagi dipaksa true di sini: hanya persetujuan admin yang mengaktifkan
                     // tutor (dan nonaktif/aktif oleh admin menyusul di ROADMAP 1.3).

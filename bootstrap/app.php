@@ -11,6 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Cookie zona waktu ditulis JS (tidak terenkripsi); nilainya divalidasi di ResolveUserTimezone.
+        $middleware->encryptCookies(except: ['tk_tz']);
+        $middleware->web(append: [\App\Http\Middleware\ResolveUserTimezone::class]);
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'tutor.verified' => \App\Http\Middleware\EnsureVerifiedTutor::class,

@@ -103,8 +103,13 @@ class DashboardController extends Controller
                 });
             // ROADMAP 1.3: daftar tutor terverifikasi untuk tab "Tutor Terverifikasi" (cari + filter aktif/nonaktif).
             $statusChanges = TutorStatusChange::query()->orderBy('id')->get()->groupBy('user_id');
+            $upcomingByTutor = LearningSession::query()->active()->whereNotNull('tutor_id')
+                ->where('starts_at', '>', now()->utc()->format('Y-m-d H:i:s'))->get(['tutor_id', 'student_id'])->groupBy('tutor_id');
             $dashboardData['admin_verified_tutors'] = TutorProfile::query()->verified()->with('subjects')->orderBy('id')->get()
-                ->map(function (TutorProfile $profile) use ($accounts, $statusChanges): TutorProfile {
+                ->map(function (TutorProfile $profile) use ($accounts, $statusChanges, $upcomingByTutor): TutorProfile {
+                    $upcoming = $upcomingByTutor->get((string) $profile->user_id, collect());
+                    $profile->impact_sessions = $upcoming->count();
+                    $profile->impact_students = $upcoming->pluck('student_id')->unique()->count();
                     $record = $accounts[(string) $profile->user_id] ?? [];
                     $profile->account_name = $record['name'] ?? 'Tutor';
                     $profile->account_contact = $record['email'] ?? $record['phone'] ?? $record['contact'] ?? '';
@@ -289,6 +294,7 @@ class DashboardController extends Controller
         $dashboardData += AssignmentDashboardData::make($authenticatedUser);
         $dashboardData = array_replace($dashboardData, NotificationCenterData::make($authenticatedUser));
 
+        $dashboardData['tutor_slots'] = $navigation['home'] === 'tutor' ? $this->tutorSlots($userId, $users) : collect();
         $dashboardData['tutor_home'] = $navigation['home'] === 'tutor'
             ? $this->tutorHome((string) $authenticatedUser->getAuthIdentifier())
             : null;
@@ -310,6 +316,35 @@ class DashboardController extends Controller
             'page_title' => 'Dashboard',
             'search_placeholder' => $navigation['search_placeholder'],
         ]);
+    }
+
+    /**
+     * Slot milik tutor untuk "Jadwal Saya". PRIVASI (Aturan no. 11): per pemesan hanya nama, mapel, topik.
+     */
+    private function tutorSlots(string $tutorId, LocalUserStore $users)
+    {
+        $names = collect($users->all())->mapWithKeys(fn (array $record): array => [(string) ($record['id'] ?? '') => (string) ($record['name'] ?? 'Siswa')]);
+        $now = now()->utc();
+
+        return \App\Models\TutorAvailabilitySlot::query()->where('tutor_id', $tutorId)
+            ->with(['activeSessions' => fn ($query) => $query->orderBy('id')])
+            ->orderBy('starts_at')->get()
+            ->map(function (\App\Models\TutorAvailabilitySlot $slot) use ($names, $now): \App\Models\TutorAvailabilitySlot {
+                $slot->is_past = $slot->starts_at->lessThanOrEqualTo($now);
+                $slot->label = \App\Support\UserTime::slotLabel($slot->starts_at, $slot->ends_at);
+                $local = \App\Support\UserTime::local($slot->starts_at);
+                $slot->local_date = $local->format('Y-m-d');
+                $slot->local_start = $local->format('H:i');
+                $slot->local_end = \App\Support\UserTime::local($slot->ends_at)->format('H:i');
+                $slot->display_status = $slot->status === 'cancelled' ? 'cancelled' : ($slot->is_past ? 'past' : $slot->status);
+                $slot->bookings = $slot->activeSessions->map(fn (LearningSession $session): array => [
+                    'name' => $names[(string) $session->student_id] ?? 'Siswa',
+                    'subject' => $session->subject,
+                    'topic' => $session->topic,
+                ])->all();
+
+                return $slot;
+            });
     }
 
     /** Ringkasan beranda tutor: hanya data milik tutor yang sedang login. */
